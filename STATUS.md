@@ -1,6 +1,6 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-13. Read after `ENGINEERING.md`. This file is *state*: where we
+**Updated:** 2026-09-14 (handoff). Read after `ENGINEERING.md`. This file is *state*: where we
 are, why things look the way they do, and what is next. `ENGINEERING.md` is *policy*.
 When they disagree, `ENGINEERING.md` wins and this file is stale — fix it.
 
@@ -13,14 +13,18 @@ Launch sequence (`ENGINEERING.md §15`):
 | Phase | Status |
 |---|---|
 | 0 — scaffold `konstellation`, pin cosmos/evm, zero local replaces | **done** — PR #1 |
-| 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, six review passes, 23 findings fixed |
+| 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, seven review passes, 29 findings fixed, last pass zero medium+ |
 | 2 — customise: genesis params, preinstalls, custom modules | **next** |
 | 3 — safety rails (§13) | not started |
 | 4+ | not started |
 
 `konstellation` PR #1: https://github.com/Konstellation-Network/konstellation/pull/1
-— branch `scaffold`, green on `build-test` / `lint` / `binary` (govulncheck). Merge
-it (squash recommended) before doing anything else in that repo.
+— branch `scaffold` at `24fb536`, green on `build-test` / `lint` / `binary`
+(govulncheck). **Not yet merged.** The PR description is the accurate summary of
+what it contains, including every genesis parameter and which are still SDK
+defaults. Merge with a **merge commit** (not squash): the ten commits are one
+scaffold plus one per review pass, and their messages are the audit trail.
+Merge before doing anything else in that repo.
 
 All other repos (`networks`, `contracts`, `infra`, `explorer`, `docs`, `whitepaper`,
 `chain-config`, `faucet`, `.github`) exist on GitHub, private, with an `init`
@@ -88,7 +92,7 @@ and produces a correct node. Specifically, in `konstellation`:
 
 ## 5. Next steps, in order
 
-1. Merge PR #1.
+1. Merge PR #1 (merge commit). Then `git -C konstellation checkout main && git pull`.
 2. Phase 2 in `konstellation`: set D10/D11 params in `app/genesis.go` (use the
    `kash(n)` helper in `app/config/chain.go` for 18-decimal amounts); decide D13.
 3. Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware
@@ -114,8 +118,10 @@ and produces a correct node. Specifically, in `konstellation`:
 
 ## 7. How PR #1 was reviewed
 
-Six automated review passes (`/code-review pr#1`), each reproducing findings
-against the live branch. Trend: 6 → 6 → 3 → 4 → 1 → 3 findings. Every finding was
+Seven automated review passes (`/code-review pr#1`), each reproducing findings
+against the live branch. Trend: 6 → 6 → 3 → 4 → 1 → 3 → 6 (all low). The
+seventh pass ran a full bootstrap, bank send, EVM transfer and zero-height
+export and found nothing above low; iterating further has diminishing returns. Every finding was
 reproduced before fixing and re-verified after. The reviewer repeatedly found
 the *next* crack in the chain-id story, which is why §1 now states the
 invariant explicitly. Expect the same reviewer to run on future PRs; write
