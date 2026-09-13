@@ -35,7 +35,7 @@ conservative by default.
 | EIP-155 chain ID, mainnet | **5667** | decided 2026-09-13 (D1) |
 | EIP-155 chain ID, testnet | **56671** | decided 2026-09-13 (D1) |
 | EIP-155 chain ID, local dev | **56670** | decided 2026-09-13 (D1 follow-up): unlisted Cosmos chain-ids get this, never a real network's id |
-| Where the EIP-155 id lives | `app.toml` → `[evm] evm-chain-id` | **Invariant: `genesis.json` decides the network; everything else is checked against it.** `init` writes the EVM id matching the chain-id in the genesis it produced; at startup a `--chain-id` or `client.toml` value that disagrees with genesis is an error naming both, and a known network with the wrong `evm-chain-id` refuses to start (`app/config.ValidateEVMChainID`). Four review passes converged on this; do not reintroduce any path that trusts a per-node file over genesis. |
+| Where the EIP-155 id lives | `app.toml` → `[evm] evm-chain-id` | **Invariant: `genesis.json` decides the network; everything else is checked against it, in both directions.** (1) A known network (`konstellation-1`, `testnet-1`) runs only with its own EVM id. (2) A real network's EVM id (5667, 56671) is used only by that network — any other chain-id running with one refuses to start, because a tx signed there would replay on the real network. `init` writes/reconciles `app.toml` to satisfy this and prints any change; at startup a `--chain-id` or `client.toml` value disagreeing with genesis (honouring `genesis_file`) is an error naming both files; `app/config.ValidateEVMChainID` enforces (1) and (2). Six review passes converged on this; do not reintroduce any path that trusts a per-node file over genesis. |
 
 ---
 

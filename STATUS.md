@@ -13,7 +13,7 @@ Launch sequence (`ENGINEERING.md §15`):
 | Phase | Status |
 |---|---|
 | 0 — scaffold `konstellation`, pin cosmos/evm, zero local replaces | **done** — PR #1 |
-| 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, five review passes, 20 findings fixed |
+| 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, six review passes, 23 findings fixed |
 | 2 — customise: genesis params, preinstalls, custom modules | **next** |
 | 3 — safety rails (§13) | not started |
 | 4+ | not started |
@@ -38,7 +38,7 @@ commit only.
 | Go | `go 1.26.0` min, `toolchain go1.26.8` (1.25 is out of support) | §3 |
 | BlockSTM | OFF; **virtual fee collection also OFF** (same bundle) | §2.5, §7.3 |
 | EIP-1559 base fee | ON (upstream evmd disables it; we do not) | app/genesis.go |
-| Chain-id invariant | **genesis.json decides the network; every per-node file is checked against it** | §1 |
+| Chain-id invariant | **genesis.json decides the network; every per-node file is checked against it, in both directions** (a real network's EVM id is used only by that network) | §1 |
 
 ## 3. Things that are deliberate and easy to mistake for bugs
 
@@ -114,8 +114,8 @@ and produces a correct node. Specifically, in `konstellation`:
 
 ## 7. How PR #1 was reviewed
 
-Five automated review passes (`/code-review pr#1`), each reproducing findings
-against the live branch. Trend: 6 → 6 → 3 → 4 → 1 findings. Every finding was
+Six automated review passes (`/code-review pr#1`), each reproducing findings
+against the live branch. Trend: 6 → 6 → 3 → 4 → 1 → 3 findings. Every finding was
 reproduced before fixing and re-verified after. The reviewer repeatedly found
 the *next* crack in the chain-id story, which is why §1 now states the
 invariant explicitly. Expect the same reviewer to run on future PRs; write
