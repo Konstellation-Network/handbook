@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# wt — Konstellation-Network org helper. Each top-level folder is its own git repo.
+#
+#   ./wt init  <repo>                 create a new repo (git init, main, first commit)
+#   ./wt clone <url> [name]           clone a repo into the org
+#   ./wt create <repo> [--public]     init locally + create on GitHub (private by default) + push
+#   ./wt new   <repo> <branch>        worktree of <repo> at .worktrees/<repo>/<branch>
+#   ./wt path  <repo> <branch>        print worktree path   (cd "$(./wt path api feat)")
+#   ./wt ls    [repo]                 list worktrees (all repos, or one)
+#   ./wt rm    <repo> <branch> [-b]   remove worktree (-b also deletes the branch)
+#   ./wt status                       every repo: branch + dirty/clean
+#   ./wt each  <git args...>          run a git command in every repo (e.g. ./wt each pull)
+set -euo pipefail
+
+# canonical file lives in <org>/.github/wt and is symlinked to <org>/wt
+ORG="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+WT_DIR="$ORG/.worktrees"
+
+usage() { sed -n '2,13p' "$0"; exit 1; }
+die()   { echo "wt: $*" >&2; exit 1; }
+GH_ORG=Konstellation-Network
+repos() { for d in "$ORG"/*/ "$ORG"/.github/; do [ -d "$d/.git" ] && basename "$d"; done; }
+need_repo() { [ -d "$ORG/$1/.git" ] || die "no such repo: $1 (run ./wt init $1)"; }
+# ENGINEERING.md §2.1: upstream Cosmos repos are go.mod deps only, never forked into the org
+forbid_fork() { case "$1" in evm|cosmos-sdk|cometbft|ibc-go)
+  die "'$1' must not exist in this org — consume it via go.mod (ENGINEERING.md §2.1)";; esac; }
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  init)
+    repo="${1:-}"; [ -n "$repo" ] || usage
+    forbid_fork "$repo"
+    [ -e "$ORG/$repo" ] && die "$repo already exists"
+    mkdir -p "$ORG/$repo"
+    git -C "$ORG/$repo" init -q -b main
+    printf '# %s\n' "$repo" > "$ORG/$repo/README.md"
+    printf '.DS_Store\nnode_modules/\n' > "$ORG/$repo/.gitignore"
+    git -C "$ORG/$repo" add -A && git -C "$ORG/$repo" commit -q -m "init"
+    echo "created repo $ORG/$repo"
+    ;;
+  create)
+    repo="${1:-}"; [ -n "$repo" ] || usage
+    vis="--private"; [ "${2:-}" = "--public" ] && vis="--public"
+    "$0" init "$repo"
+    gh repo create "$GH_ORG/$repo" $vis --source "$ORG/$repo" --remote origin --push
+    ;;
+  clone)
+    url="${1:-}"; [ -n "$url" ] || usage
+    name="${2:-$(basename "${url%.git}")}"
+    forbid_fork "$name"
+    git -C "$ORG" clone "$url" "$name"
+    ;;
+  new)
+    repo="${1:-}"; branch="${2:-}"; [ -n "$repo" ] && [ -n "$branch" ] || usage
+    need_repo "$repo"
+    path="$WT_DIR/$repo/$branch"
+    [ -e "$path" ] && die "worktree already exists: $path"
+    mkdir -p "$(dirname "$path")"
+    if git -C "$ORG/$repo" show-ref -q --verify "refs/heads/$branch"; then
+      git -C "$ORG/$repo" worktree add -q "$path" "$branch"
+    else
+      git -C "$ORG/$repo" worktree add -q -b "$branch" "$path"
+    fi
+    echo "$path"
+    echo "  $repo @ $branch   ->   cd \"$path\""
+    ;;
+  path)
+    repo="${1:-}"; branch="${2:-}"; [ -n "$repo" ] && [ -n "$branch" ] || usage
+    path="$WT_DIR/$repo/$branch"; [ -d "$path" ] || die "no worktree for $repo/$branch"
+    echo "$path"
+    ;;
+  ls)
+    if [ -n "${1:-}" ]; then need_repo "$1"; git -C "$ORG/$1" worktree list
+    else for r in $(repos); do echo "[$r]"; git -C "$ORG/$r" worktree list | sed 's/^/  /'; done; fi
+    ;;
+  rm)
+    repo="${1:-}"; branch="${2:-}"; [ -n "$repo" ] && [ -n "$branch" ] || usage
+    need_repo "$repo"
+    git -C "$ORG/$repo" worktree remove "$WT_DIR/$repo/$branch"
+    [ "${3:-}" = "-b" ] && git -C "$ORG/$repo" branch -D "$branch"
+    echo "removed $WT_DIR/$repo/$branch"
+    ;;
+  status)
+    for r in $(repos); do
+      b="$(git -C "$ORG/$r" branch --show-current)"
+      if [ -n "$(git -C "$ORG/$r" status --porcelain)" ]; then s="dirty"; else s="clean"; fi
+      printf '%-24s %-20s %s\n' "$r" "$b" "$s"
+    done
+    ;;
+  each)
+    [ $# -gt 0 ] || usage
+    for r in $(repos); do echo "== $r"; git -C "$ORG/$r" "$@"; done
+    ;;
+  *) usage ;;
+esac
