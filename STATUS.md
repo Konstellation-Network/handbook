@@ -1,8 +1,9 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-14 (handoff). Read after `ENGINEERING.md`. This file is *state*: where we
-are, why things look the way they do, and what is next. `ENGINEERING.md` is *policy*.
-When they disagree, `ENGINEERING.md` wins and this file is stale — fix it.
+**Updated:** 2026-09-14 (PR #2 merged + live smoke test). Read after `ENGINEERING.md`. This
+file is *state*: where we are, why things look the way they do, and what is next.
+`ENGINEERING.md` is *policy*. When they disagree, `ENGINEERING.md` wins and this file is stale
+— fix it.
 
 ---
 
@@ -24,7 +25,13 @@ summary of the chain as scaffolded, including every genesis parameter and which
 are still SDK defaults.
 
 `konstellation` PR #2 (https://github.com/Konstellation-Network/konstellation/pull/2)
-— upstream release watch + vuln-failure issues. **Open.** See §5.
+— upstream release watch + vuln-failure issues. **Merged** into `main` as `5130fb5` on
+2026-09-14. First live run (`gh workflow run upstream-watch.yml`, manual `workflow_dispatch`)
+confirmed the compare step working end-to-end on the real Actions runner: reported
+"up to date: pinned v0.7.3, latest v0.7.3" and correctly skipped both issue-creation steps.
+The issue-creation path itself (a real new release, or a deliberately broken run) is still
+unexercised live — first genuine trigger will be the next actual cosmos/evm tag, or the
+6-hourly cron. See §7 for how it was reviewed.
 
 All other repos (`networks`, `contracts`, `infra`, `explorer`, `docs`, `whitepaper`,
 `chain-config`, `faucet`, `.github`) exist on GitHub, private, with an `init`
@@ -93,9 +100,10 @@ and produces a correct node. Specifically, in `konstellation`:
 ## 5. Next steps, in order
 
 1. ~~Merge PR #1~~ merged 2026-09-14 (`90095a6`).
-2. Merge **PR #2** (upstream-watch automation), then `gh workflow run upstream-watch.yml`
-   once and confirm "up to date: pinned v0.7.3". This is the first live run of the
-   issue-creation step.
+2. ~~Merge PR #2~~ merged 2026-09-14 (`5130fb5`); ~~then `gh workflow run upstream-watch.yml`
+   once and confirm "up to date: pinned v0.7.3"~~ done — confirmed on the live runner. The
+   issue-creation path (a real new release, or a deliberately-broken run) is still
+   unexercised; nothing to do here but wait for the first real trigger.
 3. ~~Put names in `ENGINEERING.md §17`~~ decided 2026-09-14: shared ownership,
    any engineer, with triggers and deadlines per row (see §17). Only the on-call
    row still needs a rota, when validators exist.
@@ -131,3 +139,35 @@ reproduced before fixing and re-verified after. The reviewer repeatedly found
 the *next* crack in the chain-id story, which is why §1 now states the
 invariant explicitly. Expect the same reviewer to run on future PRs; write
 commits that a reviewer can verify without the chat.
+
+## 8. How PR #2 was reviewed
+
+Four automated review passes (`/code-review pr#2`), findings fixed and
+re-verified locally (live against the real cosmos/evm repo, not mocked) before
+each next pass. Two were genuinely load-bearing, not style nits:
+
+- Round 1's own dedup fix (`gh issue list --jq --arg ...`) turned out to be
+  invalid — `gh`'s `--jq` doesn't take extra `jq` arguments — and would have
+  silently aborted the issue-upsert step on every run under Actions'
+  `set -e` shell. Caught by testing the exact command locally before round 2
+  shipped, not by the reviewer.
+- Round 4 found a real, still-dormant bug: the up-to-date check compared
+  `PINNED`/latest with `sort -V`, which doesn't implement semver precedence.
+  A pinned Go pseudo-version at the same release core as a just-tagged
+  release would sort as "newer" and make the watcher report up to date for a
+  release it never saw. go.mod pins a clean tag today so this hasn't fired,
+  but the logic was verifiably wrong; fixed by comparing the release core
+  first, only treating an exact suffix-free match as up to date.
+
+Two low-severity items were deliberately left unfixed across rounds 2 and 4
+(reasoning is in the PR #2 description, not repeated here): tag listing pages
+through cosmos/evm's full tag history rather than one bounded call, and
+`gh label create` runs unconditionally with errors swallowed. Both are
+accepted trade-offs favoring correctness/clarity over a marginal efficiency
+gain, not oversights.
+
+`scripts/upstream-check.sh` no longer clones cosmos/evm — it went through a
+git-clone → GitHub-API rewrite mid-review (round 3) once the local clone was
+flagged as unnecessary CI cost; commit dates, commit log, and the hot-zone
+diff stat now come from the GitHub commits/compare APIs, with an explicit
+warning if the compare API's 300-file cap is ever hit.
