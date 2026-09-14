@@ -1,6 +1,7 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-14 (PR #2 merged + live smoke test). Read after `ENGINEERING.md`. This
+**Updated:** 2026-09-14 (PR #2 merged + live smoke test; `infra` testnet-1 scaffold added).
+Read after `ENGINEERING.md`. This
 file is *state*: where we are, why things look the way they do, and what is next.
 `ENGINEERING.md` is *policy*. When they disagree, `ENGINEERING.md` wins and this file is stale
 — fix it.
@@ -33,9 +34,14 @@ The issue-creation path itself (a real new release, or a deliberately broken run
 unexercised live — first genuine trigger will be the next actual cosmos/evm tag, or the
 6-hourly cron. See §7 for how it was reviewed.
 
-All other repos (`networks`, `contracts`, `infra`, `explorer`, `docs`, `whitepaper`,
-`chain-config`, `faucet`, `.github`) exist on GitHub, private, with an `init`
-commit only.
+`infra` has a testnet-1 scaffold (terraform modules for validator/sentry/rpc/archive,
+ansible roles for node/cosmovisor/horcrux/monitoring/firewall, prometheus alert
+rules) — not yet committed there, not yet applied against real infrastructure.
+See `infra/README.md` "Known gaps" for what's still missing before a real
+`terraform apply` (bastion host, monitoring host, dedicated horcrux cosigners,
+version pins, state backend). All other repos (`networks`, `contracts`,
+`explorer`, `docs`, `whitepaper`, `chain-config`, `faucet`, `.github`) exist on
+GitHub, private, with an `init` commit only.
 
 ## 2. Decisions made on 2026-09-13 (all recorded in ENGINEERING.md)
 
@@ -44,7 +50,8 @@ commit only.
 | D1 EIP-155 ids | mainnet **5667**, testnet-1 **56671**, local/unknown **56670** | §1, §11 |
 | D2 token | **KASH**, base denom `esp`, 18 decimals, no precisebank | §1, §11 |
 | D3 bech32 | `kons` | §1, §11 |
-| D11 (partial) | gov min deposit **10 KASH**, expedited **50 KASH** | §11 |
+| D10 (2026-09-14) | staking: DPoS, unbonding 21d, `min_commission_rate` 5%, **`max_validators` 30**, downtime slash 0.01%, double-sign slash 5% | §11; `app/config/chain.go` + `app/app.go` |
+| D11 | gov: min deposit **10 KASH** / expedited **50 KASH** (2026-09-13); voting period **3d**, quorum **33.4%**, threshold **50%** (2026-09-14) | §11; `app/config/chain.go` + `app/app.go` |
 | cosmos/evm pin | **v0.7.3** (v0.7.2 has GHSA-367m-g444-9mg3) | §2.4, §3, §4.1 |
 | Go | `go 1.26.0` min, `toolchain go1.26.8` (1.25 is out of support) | §3 |
 | BlockSTM | OFF; **virtual fee collection also OFF** (same bundle) | §2.5, §7.3 |
@@ -91,10 +98,7 @@ and produces a correct node. Specifically, in `konstellation`:
 | D6 | compliance scope | decide before audit scoping (§10) |
 | D7 | validator set model | 5–10 self-run = permissioned; say so honestly |
 | D8 | launch value ceiling | no bridge day one, or hard caps + IBC rate limit |
-| D10 | staking params | §11 has sensible numbers; also decide `min_gas_multiplier` |
-| D11 | gov voting period / quorum / threshold | 3–5 days at launch; deposits already set |
 | D12 | vesting | Solidity contracts, not `x/auth` vesting — confirm and build in `contracts` |
-| **D13 (new)** | **Krakatoa app-side EVM mempool** | Currently ON (upstream default). Independent of BlockSTM. Per-node `app.toml` setting but all validators must agree. Not discussed in §7.3 beyond mechanics — needs an explicit decision. |
 | §17 | ownership | decided: shared, any engineer, issue-driven with 1-working-day self-assign; on-call rota still to create in `infra` |
 
 ## 5. Next steps, in order
@@ -107,8 +111,13 @@ and produces a correct node. Specifically, in `konstellation`:
 3. ~~Put names in `ENGINEERING.md §17`~~ decided 2026-09-14: shared ownership,
    any engineer, with triggers and deadlines per row (see §17). Only the on-call
    row still needs a rota, when validators exist.
-4. Phase 2 in `konstellation`: set D10/D11 params in `app/genesis.go` (use the
-   `kash(n)` helper in `app/config/chain.go` for 18-decimal amounts); decide D13.
+4. Phase 2 in `konstellation`: ~~set D10~~ ~~set D11~~ both done 2026-09-14
+   (staking + slashing + gov params in `app/config/chain.go` / `app/app.go`;
+   build + `make test-unit` green). ~~decide D13~~ decided 2026-09-14: keep
+   the app-side mempool ON — already the code's behavior (`init` already
+   writes `mempool.type = "app"`), so no change needed, just recorded. Still
+   open: feemarket `min_gas_multiplier` (currently upstream default 0.5, tied
+   to D10/D11 per §3 but not itself part of either — needs its own call).
 5. Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware
    (§13). Both are `app.go` wiring, no fork.
 6. `tests/e2e` (interchaintest): first test should be the one upstream lacks —
@@ -117,6 +126,13 @@ and produces a correct node. Specifically, in `konstellation`:
    --chain-id testnet-1`; record its sha256 (§6.2).
 8. `.github` repo: org-wide CODEOWNERS. (`ENGINEERING.md`, `CLAUDE.md`,
    `STATUS.md`, `wt` already live there; `bootstrap.sh` recreates the org dir.)
+9. `infra`: testnet-1 scaffold exists (terraform + ansible), not yet a real
+   deployment — see `infra/README.md` "Known gaps". Not blocking anything
+   above; runs in parallel given terraform/ansible lead time. Before a real
+   `terraform apply`: pick the state backend, stand up a bastion + monitoring
+   host (neither has a terraform module yet), and fill in the empty
+   `konstellationd_version`/`*_sha256` vars once `konstellation` cuts a
+   release (waits on step 4-6 above).
 
 ## 6. Tooling and locations
 
