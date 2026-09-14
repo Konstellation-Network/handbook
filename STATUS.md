@@ -12,19 +12,19 @@ Launch sequence (`ENGINEERING.md §15`):
 
 | Phase | Status |
 |---|---|
-| 0 — scaffold `konstellation`, pin cosmos/evm, zero local replaces | **done** — PR #1 |
+| 0 — scaffold `konstellation`, pin cosmos/evm, zero local replaces | **done** — PR #1, merged 2026-09-14 |
 | 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, seven review passes, 29 findings fixed, last pass zero medium+ |
 | 2 — customise: genesis params, preinstalls, custom modules | **next** |
 | 3 — safety rails (§13) | not started |
 | 4+ | not started |
 
-`konstellation` PR #1: https://github.com/Konstellation-Network/konstellation/pull/1
-— branch `scaffold` at `24fb536`, green on `build-test` / `lint` / `binary`
-(govulncheck). **Not yet merged.** The PR description is the accurate summary of
-what it contains, including every genesis parameter and which are still SDK
-defaults. Merge with a **merge commit** (not squash): the ten commits are one
-scaffold plus one per review pass, and their messages are the audit trail.
-Merge before doing anything else in that repo.
+`konstellation` PR #1 (https://github.com/Konstellation-Network/konstellation/pull/1)
+**merged** into `main` as `90095a6` on 2026-09-14. Its description is the accurate
+summary of the chain as scaffolded, including every genesis parameter and which
+are still SDK defaults.
+
+`konstellation` PR #2 (https://github.com/Konstellation-Network/konstellation/pull/2)
+— upstream release watch + vuln-failure issues. **Open.** See §5.
 
 All other repos (`networks`, `contracts`, `infra`, `explorer`, `docs`, `whitepaper`,
 `chain-config`, `faucet`, `.github`) exist on GitHub, private, with an `init`
@@ -92,18 +92,22 @@ and produces a correct node. Specifically, in `konstellation`:
 
 ## 5. Next steps, in order
 
-1. Merge PR #1 (merge commit). Then `git -C konstellation checkout main && git pull`.
-2. Phase 2 in `konstellation`: set D10/D11 params in `app/genesis.go` (use the
+1. ~~Merge PR #1~~ merged 2026-09-14 (`90095a6`).
+2. Merge **PR #2** (upstream-watch automation), then `gh workflow run upstream-watch.yml`
+   once and confirm "up to date: pinned v0.7.3". This is the first live run of the
+   issue-creation step.
+3. Put names in `ENGINEERING.md §17`. The automation turns rows 1–3 into GitHub
+   issues (labels `upstream-release`, `vulncheck`); someone must own responding.
+4. Phase 2 in `konstellation`: set D10/D11 params in `app/genesis.go` (use the
    `kash(n)` helper in `app/config/chain.go` for 18-decimal amounts); decide D13.
-3. Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware
+5. Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware
    (§13). Both are `app.go` wiring, no fork.
-4. `tests/e2e` (interchaintest): first test should be the one upstream lacks —
+6. `tests/e2e` (interchaintest): first test should be the one upstream lacks —
    an EVM transfer *to a module account* must be rejected (§4.1.1 coverage gap).
-5. `networks/testnet-1/`: genesis comes straight from `konstellationd init
+7. `networks/testnet-1/`: genesis comes straight from `konstellationd init
    --chain-id testnet-1`; record its sha256 (§6.2).
-6. `.github` repo: org-wide CODEOWNERS; consider moving `ENGINEERING.md`,
-   `CLAUDE.md`, `STATUS.md` there (they are currently only on this machine —
-   the org root is not a git repo).
+8. `.github` repo: org-wide CODEOWNERS. (`ENGINEERING.md`, `CLAUDE.md`,
+   `STATUS.md`, `wt` already live there; `bootstrap.sh` recreates the org dir.)
 
 ## 6. Tooling and locations
 
