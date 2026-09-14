@@ -88,7 +88,7 @@ and produces a correct node. Specifically, in `konstellation`:
 | D11 | gov voting period / quorum / threshold | 3–5 days at launch; deposits already set |
 | D12 | vesting | Solidity contracts, not `x/auth` vesting — confirm and build in `contracts` |
 | **D13 (new)** | **Krakatoa app-side EVM mempool** | Currently ON (upstream default). Independent of BlockSTM. Per-node `app.toml` setting but all validators must agree. Not discussed in §7.3 beyond mechanics — needs an explicit decision. |
-| §17 | owners for patch-watch etc. | still all **unassigned**; v0.7.3 shipped ten days before anyone noticed |
+| §17 | ownership | decided: shared, any engineer, issue-driven with 1-working-day self-assign; on-call rota still to create in `infra` |
 
 ## 5. Next steps, in order
 
@@ -96,8 +96,9 @@ and produces a correct node. Specifically, in `konstellation`:
 2. Merge **PR #2** (upstream-watch automation), then `gh workflow run upstream-watch.yml`
    once and confirm "up to date: pinned v0.7.3". This is the first live run of the
    issue-creation step.
-3. Put names in `ENGINEERING.md §17`. The automation turns rows 1–3 into GitHub
-   issues (labels `upstream-release`, `vulncheck`); someone must own responding.
+3. ~~Put names in `ENGINEERING.md §17`~~ decided 2026-09-14: shared ownership,
+   any engineer, with triggers and deadlines per row (see §17). Only the on-call
+   row still needs a rota, when validators exist.
 4. Phase 2 in `konstellation`: set D10/D11 params in `app/genesis.go` (use the
    `kash(n)` helper in `app/config/chain.go` for 18-decimal amounts); decide D13.
 5. Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware

@@ -857,13 +857,26 @@ ansible-playbook -i inventories/testnet-1 ansible/upgrade.yml
 
 ## 17. Standing responsibilities
 
-| Responsibility | Cadence | Owner |
-|---|---|---|
-| Watch `cosmos/evm` releases + `cosmos/security` | continuous | **unassigned** |
-| Diff every upstream release | per release | **unassigned** |
-| `govulncheck` nightly review | daily | automated + **unassigned** |
-| Validator on-call rotation | continuous | **unassigned** |
-| Halt drill rehearsal | quarterly | **unassigned** |
+**Ownership model (decided 2026-09-14): shared across engineering, not assigned to
+individuals.** Any engineer may handle any row. Shared ownership only works with
+a trigger and a deadline, so each row has both.
 
-Assign these before testnet-1. An unassigned patch-watch responsibility is exactly
-how a chain ends up five months behind a critical fix.
+| Responsibility | Trigger | Deadline | Who |
+|---|---|---|---|
+| Watch `cosmos/evm` releases + `cosmos/security` | automated: `upstream-watch` opens an issue labelled `upstream-release` within 6 h of a new tag | self-assign the issue **within 1 working day**; review complete within 24 h of self-assigning (§4.2 target) | any engineer |
+| Diff every upstream release | the same issue carries the hot-zone diff stat and checklist | as above; record the review in §4.1 before closing the issue | the engineer who self-assigned |
+| `govulncheck` nightly review | automated: nightly `source` job opens an issue labelled `vulncheck` on failure | self-assign within 1 working day; fix or justify in `.govulncheck-allowlist` + §4.1.1 | any engineer |
+| Validator on-call rotation | pager (tenderduty, §9.2) | acknowledge within 15 min | rota — **must be a schedule, not "anyone"**; set up in `infra` before testnet-1 |
+| Halt drill rehearsal | calendar, quarterly | run within the quarter; write up in `infra/runbooks/` | whoever is on-call that week leads it |
+
+Rules that make "any engineer" real:
+
+1. An `upstream-release` or `vulncheck` issue with no assignee after one working
+   day is an incident, not a backlog item.
+2. Nobody closes one of these issues without the §4.1 / §4.1.1 record written.
+3. The on-call row is the exception: pages need a named person at every moment.
+   That is a rota in `infra`, decided when validators exist.
+
+Before this model was recorded, v0.7.3 (a critical, state-breaking fix) shipped
+on 3 Sep 2026 and was noticed on 13 Sep, by chance. The automation closes the
+noticing gap; these rules close the responding gap.
