@@ -1,7 +1,8 @@
 # Konstellation — Status & Handoff
 
 **Updated:** 2026-09-14 (PR #2 merged + live smoke test; `infra` testnet-1 scaffold added;
-`contracts` Foundry project scaffolded — WKONS + preinstalls).
+`contracts` Foundry project scaffolded — WKONS + preinstalls; `docs` Docusaurus site
+scaffolded; `konstellation` D10/D11 genesis params set on an unmerged local branch).
 Read after `ENGINEERING.md`. This
 file is *state*: where we are, why things look the way they do, and what is next.
 `ENGINEERING.md` is *policy*. When they disagree, `ENGINEERING.md` wins and this file is stale
@@ -55,7 +56,10 @@ EntryPointV07, EntryPointV08 and Create2Deployer are **not** and still need
 explicit genesis wiring in `konstellation` (see Phase 2, §5 step 4).
 `src/vesting/` is intentionally not built — blocked on D12 sign-off.
 
-All other repos (`networks`, `explorer`, `docs`, `whitepaper`, `chain-config`,
+`docs` has a Docusaurus site scaffolded and pushed to `main` (`2f2e598`, 2026-09-14):
+stub docs pages, no real content written yet.
+
+All other repos (`networks`, `explorer`, `whitepaper`, `chain-config`,
 `faucet`, `.github`) exist on GitHub, private, with an `init` commit only.
 
 ## 2. Decisions made on 2026-09-13 (all recorded in ENGINEERING.md)
@@ -126,9 +130,12 @@ and produces a correct node. Specifically, in `konstellation`:
 3. ~~Put names in `ENGINEERING.md §17`~~ decided 2026-09-14: shared ownership,
    any engineer, with triggers and deadlines per row (see §17). Only the on-call
    row still needs a rota, when validators exist.
-4. Phase 2 in `konstellation`: ~~set D10~~ ~~set D11~~ both done 2026-09-14
+4. Phase 2 in `konstellation`: ~~set D10~~ ~~set D11~~ params implemented 2026-09-14
    (staking + slashing + gov params in `app/config/chain.go` / `app/app.go`;
-   build + `make test-unit` green). ~~decide D13~~ decided 2026-09-14: keep
+   build + `make test-unit` green) — **but only on local branch
+   `phase2-genesis-params` (`a659aa3`); not pushed to `origin`, no PR opened,
+   `main` is still at `5130fb5`.** Push and open a PR before treating D10/D11
+   as landed. ~~decide D13~~ decided 2026-09-14: keep
    the app-side mempool ON — already the code's behavior (`init` already
    writes `mempool.type = "app"`), so no change needed, just recorded. Still
    open: feemarket `min_gas_multiplier` (currently upstream default 0.5, tied
