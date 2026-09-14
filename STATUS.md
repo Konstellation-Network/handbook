@@ -1,6 +1,7 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-14 (PR #2 merged + live smoke test; `infra` testnet-1 scaffold added).
+**Updated:** 2026-09-14 (PR #2 merged + live smoke test; `infra` testnet-1 scaffold added;
+`contracts` Foundry project scaffolded — WKONS + preinstalls).
 Read after `ENGINEERING.md`. This
 file is *state*: where we are, why things look the way they do, and what is next.
 `ENGINEERING.md` is *policy*. When they disagree, `ENGINEERING.md` wins and this file is stale
@@ -39,9 +40,23 @@ ansible roles for node/cosmovisor/horcrux/monitoring/firewall, prometheus alert
 rules) — not yet committed there, not yet applied against real infrastructure.
 See `infra/README.md` "Known gaps" for what's still missing before a real
 `terraform apply` (bastion host, monitoring host, dedicated horcrux cosigners,
-version pins, state backend). All other repos (`networks`, `contracts`,
-`explorer`, `docs`, `whitepaper`, `chain-config`, `faucet`, `.github`) exist on
-GitHub, private, with an `init` commit only.
+version pins, state backend).
+
+`contracts` has a Foundry project scaffolded and pushed to `main` (`018e3a5`,
+2026-09-14): `src/WKONS.sol` (wrapped native token, KASH/`esp`, 18 decimals),
+`preinstalls/{Multicall3,Permit2,EntryPointV07,EntryPointV08,Create2Deployer}.json`
+(deployed bytecode pinned from live mainnet `eth_getCode`, each with a `codeHash`
+guard), `test/GenesisBytecode.t.sol` (offline self-consistency check) and
+`script/VerifyPreinstalls.s.sol` (live check against a real RPC fork — run and
+passing against mainnet at pin time), plus a CI workflow running
+`forge fmt`/`build`/`test`. Multicall3 and Permit2 are already in cosmos/evm's
+`DefaultPreinstalls` at identical addresses/bytecode (verified byte-for-byte);
+EntryPointV07, EntryPointV08 and Create2Deployer are **not** and still need
+explicit genesis wiring in `konstellation` (see Phase 2, §5 step 4).
+`src/vesting/` is intentionally not built — blocked on D12 sign-off.
+
+All other repos (`networks`, `explorer`, `docs`, `whitepaper`, `chain-config`,
+`faucet`, `.github`) exist on GitHub, private, with an `init` commit only.
 
 ## 2. Decisions made on 2026-09-13 (all recorded in ENGINEERING.md)
 
@@ -118,6 +133,13 @@ and produces a correct node. Specifically, in `konstellation`:
    writes `mempool.type = "app"`), so no change needed, just recorded. Still
    open: feemarket `min_gas_multiplier` (currently upstream default 0.5, tied
    to D10/D11 per §3 but not itself part of either — needs its own call).
+   Still to do for the "preinstalls" part of Phase 2: `contracts` now has
+   pinned bytecode ready (2026-09-14, see §1) for `EntryPointV07`,
+   `EntryPointV08` and `Create2Deployer` — wire these into `app/genesis.go`'s
+   preinstall list (`Multicall3`/`Permit2` need no action, already covered by
+   cosmos/evm's `DefaultPreinstalls`). Also undecided: whether `WKONS` ships
+   as a genesis preinstall at a fixed address or an ordinary post-genesis
+   deploy — nobody has made this call yet.
 5. Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware
    (§13). Both are `app.go` wiring, no fork.
 6. `tests/e2e` (interchaintest): first test should be the one upstream lacks —
