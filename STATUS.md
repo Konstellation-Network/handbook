@@ -3,8 +3,9 @@
 **Updated:** 2026-09-15 (D6 semantics/authority decided, team vesting revocable, testnet
 gov profile built — `konstellation` PR #7, stacked on #6. Also today: genesis allocation
 decided (`TOKENOMICS.md §7`); D6 re-decided to a chain-wide `x/compliance`;
-`ENGINEERING.md §18` testnet-vs-mainnet matrix. Open PRs: #5 (D4/D5), #6 (gov deposit
-1000/5000, community tax, min_gas_price), #7 (network profiles) — merge in that order. Earlier the same day: PR #4 merged (preinstalls incl. the
+`ENGINEERING.md §18` testnet-vs-mainnet matrix. Open PRs: #5 (D4/D5, review findings fixed in `9c51d8b`), #6 (gov deposit 1000/5000,
+community tax, min_gas_price), #7 (network profiles) — merge in that order. **New §2a: a
+restarted node panics on its first EVM tx — pre-existing, blocks testnet-1.** Earlier the same day: PR #4 merged (preinstalls incl. the
 two `SenderCreator`s via `contracts` PR #1), PR #3 merged, D4–D9 and D12 decided,
 `WKONS`→`WKASH` rename committed).
 Read after `ENGINEERING.md`. This
@@ -140,6 +141,13 @@ All other repos (`networks`, `explorer`, `whitepaper`, `chain-config`,
 | Chain-id invariant | **genesis.json decides the network; every per-node file is checked against it, in both directions** (a real network's EVM id is used only by that network) | §1 |
 | WKASH (was WKONS) | renamed 2026-09-15 to match the D2 token symbol; ships as a **post-genesis deploy**, not a genesis preinstall — see §1 | §6.3, §11 |
 | Genesis preinstalls (2026-09-15) | cosmos/evm's 5 defaults + `EntryPointV07`/`V08`, each with its `SenderCreator`, + `Create2Deployer` at canonical mainnet addresses — **merged, PR #4 (`dc1a4db`)**. Bytecode source of truth is `contracts/preinstalls/`; a preinstall never runs its constructor, so constructor-deployed companions must be preinstalled too | §6.1, §6.3; `app/preinstalls/` |
+
+## 2a. Known problems — open
+
+| Found | Symptom | What we know | Severity |
+|---|---|---|---|
+| 2026-09-15 | **A restarted node panics on its first EVM tx.** Start `konstellationd` on existing state, wait for blocks, submit `eth_sendRawTransaction` → the node dies: `panic: module account  does not exist: unknown address` from `x/vm` `DeductTxCostsFromUserBalance` inside the EVM mempool's `legacypool.runReorg`. At startup the log shows `failed to initialize rechecker context: … context did not contain latest block height in either check state or finalize block state (N): invalid height` (`cosmos/evm` `mempool/recheck_pool.go:158`) and `Failed to get evm coin info`. | Reproduced 3/3 on `main` (`dc1a4db`) and on PR #5's branch; not caused by any Phase 2 change. Fresh chains (`init` → `start`) are fine; Cosmos txs via CometBFT RPC are fine. One earlier restart today did *not* die, so there is a race. Upstream `cosmos/evm` issues: nothing found for this signature (2026-09-15). Not yet compared with `evmd`, so it is unknown whether it is our wiring (`app/mempool.go`, `root.go initCometConfig`) or upstream v0.7.3. `BaseApp.GetLatestContext` wants the check-state header height == store latest version, which is not true right after `LoadLatestVersion`. | **Blocks testnet-1** — validators restart. Investigate before phase 5; candidate fix is an upstream issue/PR or triggering `Rechecker.Update` after the first committed block. |
+| 2026-09-15 | Fee collector `Burner` permission is stored on the module account at creation. A network that ever ran a binary without it (or a genesis exported from one) will panic in `BurnCoins` at the first EndBlock with gas used after upgrading to PR #5. | Not a problem for testnet-1 or mainnet, which start on a post-PR-#5 binary. Recorded so the first real upgrade handler pattern includes "rewrite module account permissions" if it ever applies. | note |
 
 ## 3. Things that are deliberate and easy to mistake for bugs
 
