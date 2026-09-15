@@ -142,7 +142,7 @@ GitHub, private, with an `init` commit only.
 | D8 launch value ceiling (2026-09-15) | **no bridge on day one**; post-launch sequence (soak → build+audit bridge & IBC rate-limit middleware in parallel → calibrate caps → open with caps enforced in-contract) recorded in §11 | §11, §13 |
 | D9 audit (2026-09-15) | **Informal Systems** | §11, §12 |
 | D10 (2026-09-14) | staking: DPoS, unbonding 21d, `min_commission_rate` 5%, **`max_validators` 30**, downtime slash 0.01%, double-sign slash 5% — **merged, PR #3 (`21da290`)** | §11; `app/config/chain.go` + `app/app.go` |
-| D11 | gov: min deposit **10 KASH** / expedited **50 KASH** (2026-09-13); voting period **3d**, quorum **33.4%**, threshold **50%** (2026-09-14) — **merged, PR #3 (`21da290`)** | §11; `app/config/chain.go` + `app/app.go` |
+| D11 | gov: min deposit **1 000 KASH** / expedited **5 000 KASH** (raised 2026-09-15 from 10 / 50, **PR #6, open**), refundable unless vetoed (pinned); voting period **3d**, quorum **33.4%**, threshold **50%** (2026-09-14, merged PR #3 `21da290`). testnet-1/dev: 2 h / 30 min / 10 / 50 (PR #7) | §11, §18; `app/config/chain.go` + `app/app.go` |
 | D12 vesting (confirmed 2026-09-15) | Solidity vesting contracts, not `x/auth` vesting accounts. `contracts/src/vesting/` — **not yet built** | §11 |
 | D13 Krakatoa mempool (2026-09-14) | keep app-side EVM mempool **ON** — no code change, already the default behaviour | §11 |
 | cosmos/evm pin | **v0.7.3** (v0.7.2 has GHSA-367m-g444-9mg3) | §2.4, §3, §4.1 |
