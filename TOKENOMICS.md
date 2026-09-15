@@ -1,6 +1,6 @@
 # Konstellation — Tokenomics
 
-**Last updated:** 2026-09-15. Single source of truth for every economic parameter
+**Last updated:** 2026-09-15 (community tax, gov deposit and min_gas_price decided; genesis allocation proposed, §7). Single source of truth for every economic parameter
 of the chain: what is decided, what it is set to, where in code it lives, and what
 is still open. `ENGINEERING.md §11` records *that* a decision was made;
 this file records the resulting numbers and how they interact. When a number
@@ -71,8 +71,8 @@ Minted coins enter the fee collector and are swept by `x/distribution` every
 block, together with transaction tips (§3):
 
 1. **Community tax** — `community_tax` share to the community pool, spendable
-   only by governance. Currently the **SDK default 2 %** — not an explicit
-   decision yet (§7).
+   only by governance. **2 %** (decided 2026-09-15; the SDK default, kept and
+   set explicitly — konstellation PR #6).
 2. The rest to validators pro-rata by bonded stake. Each validator takes its
    **commission** (chain-wide floor **5 %**, D10) and passes the remainder to
    its delegators pro-rata.
@@ -91,7 +91,7 @@ Konstellation runs EIP-1559 for every transaction, EVM and Cosmos alike.
 | Initial base fee | 1 gwei-equivalent (10⁹ esp per gas) | cosmos/evm default; adjusts from block 1 |
 | Base-fee change denominator | 8 | ±12.5 % per block max, as Ethereum |
 | Elasticity multiplier | 2 | target = ½ block gas limit |
-| `min_gas_price` (base-fee floor) | **0** | cosmos/evm default — base fee can decay toward 0 in idle periods; see §7 |
+| `min_gas_price` (base-fee floor) | **0** | decided 2026-09-15 (PR #6): no protocol floor; the base fee may decay toward 0 when idle. Gov param if that ever changes |
 | `min_gas_multiplier` | 0.5 | anti-manipulation floor on recorded gasWanted; not a user-facing charge |
 
 **Every tx pays `gasUsed × (baseFee + tip)`.** Of that:
@@ -151,8 +151,8 @@ Slashed stake is burned. Code: `app/config/chain.go`, `app/app.go`.
 
 | Parameter | Value | Note |
 |---|---|---|
-| Min proposal deposit | **10 KASH** | to enter the voting period |
-| Expedited min deposit | **50 KASH** | 1-day vote, ⅔ threshold |
+| Min proposal deposit | **1 000 KASH** | to enter the voting period (raised from SDK default 10, 2026-09-15, PR #6) |
+| Expedited min deposit | **5 000 KASH** | 1-day vote, ⅔ threshold |
 | Max deposit period | 2 days | SDK default |
 | Voting period | **3 days** | lengthen as the set decentralises |
 | Expedited voting period | 1 day | SDK default |
@@ -160,15 +160,14 @@ Slashed stake is burned. Code: `app/config/chain.go`, `app/app.go`.
 | Pass threshold | **50 %** | of non-abstain votes |
 | Expedited threshold | 66.7 % | SDK default |
 | Veto threshold | 33.4 % | SDK default |
-| Deposit on veto | **burned** | SDK default (`burn_vote_veto = true`) |
-| Deposit on failed quorum / plain rejection | refunded | SDK defaults |
+| Deposit on veto | **burned** | `burn_vote_veto = true`, pinned (decided 2026-09-15) |
+| Deposit on failed quorum / plain rejection / pass | **refunded** | `burn_vote_quorum = false`, `burn_proposal_deposit_prevote = false`, pinned |
 
 Deposits are refunded on any outcome except veto, so **the deposit is a spam
-bond, not a cost**. Against a 1 B supply, 10 KASH is 1 × 10⁻⁸ of supply —
-roughly 50× smaller as a share of supply than Cosmos Hub's 250 ATOM. Whether
-that is too low depends on KASH's price and how the community pool is guarded;
-it is a governance parameter and can be raised by proposal at any time. Flagged
-in §7.
+bond, not a cost**: it decides who can afford to *propose*, not what proposing
+costs. 1 000 KASH is 1 × 10⁻⁶ of the 1 B supply — inside what any serious
+proposer holds, well above what a spammer wants locked for up to 5 days per
+proposal. Governance parameter; adjustable by proposal.
 
 Code: `app/config/chain.go`, `app/app.go`.
 
@@ -190,17 +189,70 @@ Code: `app/config/chain.go`, `app/app.go`.
 
 ---
 
-## 7. Open items
+## 7. Genesis allocation — PROPOSED 2026-09-15, not yet confirmed
+
+Brief from the founders: favour the founding team, the community/developers,
+and a treasury. On a 1,000,000,000 KASH supply:
+
+| Bucket | Share | KASH | Liquid at genesis | Vesting / release | Held by |
+|---|---|---|---|---|---|
+| **Founding team & early contributors** | **22 %** | 220 M | 0 | 12-month cliff, then linear over 36 months (4 years total) | D12 Solidity vesting contracts, one per person |
+| **Community & developers** | **33 %** | 330 M | 30 M | released programmatically over 5 years, front-loaded | see split below |
+| **Treasury (foundation)** | **25 %** | 250 M | 50 M | 20 % liquid at genesis, remainder linear over 48 months | foundation multisig (≥ 3-of-5); vesting contract for the locked part |
+| **Validator bootstrap & staking** | **12 %** | 120 M | 120 M, bonded | none — bonded at genesis via gentx | launch validators' operating entities (D7: 5–10 self-run) |
+| **Liquidity & public distribution** | **8 %** | 80 M | 80 M | none | foundation, earmarked (DEX liquidity, market makers, any public sale) |
+| | **100 %** | 1 000 M | 280 M (28 %) | | |
+
+Community & developers, 33 %, split:
+
+| Sub-bucket | Share | Purpose | Steward |
+|---|---|---|---|
+| Ecosystem & developer grants | 18 % | builders, integrations, tooling, bug bounties | foundation grants committee; large grants ratified by governance |
+| User & developer incentives | 10 % | usage rewards, airdrops, liquidity-mining, hackathon prizes | foundation, programme by programme |
+| On-chain community pool seed | 5 % | governance-spendable from day one, on top of the 2 % tax | `x/distribution` community pool, gov proposals only |
+
+Why these numbers:
+
+- **Team 22 %, fully locked, 1-year cliff** is the middle of the L1 range
+  (Solana 12.5 %, Aptos 19 %, Sui 20 %, Avalanche 10 %; Sei/Berachain higher)
+  and reads as committed rather than extractive. Nothing is sellable in year 1.
+- **Community 33 % is the largest bucket** — it is what "favour the community"
+  looks like on paper, and grants + incentives are the actual growth lever for a
+  new EVM chain.
+- **Treasury 25 %** covers audits (D9), infra, legal, listings and multi-year
+  runway; 20 % liquid because those costs start before launch.
+- **Validator 12 % bonded at genesis** ⇒ ~120 M bonded on day one ⇒ **≈11.5 %
+  staking APR** from D4's curve, high enough to pull outside delegations in as
+  the set opens up (D7), and falling naturally as they arrive.
+- **28 % liquid at genesis** (validators' bonded stake + treasury tranche +
+  liquidity) is enough float for a functioning market without a supply overhang.
+
+Year-by-year circulating supply (issuance excluded, community releases
+front-loaded 30 / 25 / 20 / 15 / 10 %):
+
+| End of year | Team | Community | Treasury | Validators | Liquidity | **Circulating** |
+|---|---|---|---|---|---|---|
+| genesis | 0 | 30 M | 50 M | 120 M | 80 M | **280 M (28 %)** |
+| 1 | 0 | 120 M | 100 M | 120 M | 80 M | **420 M (42 %)** |
+| 2 | 73 M | 195 M | 150 M | 120 M | 80 M | **618 M (62 %)** |
+| 3 | 147 M | 255 M | 200 M | 120 M | 80 M | **802 M (80 %)** |
+| 4 | 220 M | 300 M | 250 M | 120 M | 80 M | **970 M (97 %)** |
+| 5 | 220 M | 330 M | 250 M | 120 M | 80 M | **1 000 M (100 %)** |
+
+What confirming this unblocks: the D12 vesting contracts get a concrete spec
+(cliff + linear, per-beneficiary, revocable by the foundation for team
+departures or not — **decide**), and `networks/testnet-1/genesis.json` can
+mirror the shape with test allocations. What it does not need yet: names and
+individual amounts inside the team bucket.
+
+## 8. Open items
 
 Not decisions in `ENGINEERING.md §11`'s sense (every numbered one is resolved),
 but numbers that are either assumed, defaulted, or need re-checking:
 
 | Item | Current | Why it matters | Where it gets settled |
 |---|---|---|---|
-| Genesis supply | 1 B KASH, **assumed** | F = 1265 was sized against it; a materially different supply should re-open F | `networks/<net>/genesis.json` allocations |
-| Genesis allocation & vesting | not written | who holds what at block 1; vesting is Solidity contracts (D12), so allocations to vesting contracts need those built first | `networks/`, `contracts/src/vesting/` |
-| Community tax | 2 % (SDK default) | 2 % of all issuance + tips accrues to a gov-controlled pool; no explicit decision recorded | `app/app.go` distribution genesis; gov param |
-| Gov min deposit vs supply | 10 / 50 KASH | tiny as a share of 1 B; spam bond only | gov param, raise by proposal |
+| Genesis supply | 1 B KASH, **assumed** | F = 1265 was sized against it; a materially different supply should re-open F | confirm with §7 |
+| Genesis allocation & vesting | **proposed, §7** — awaiting confirmation | who holds what at block 1; team/treasury vesting is Solidity contracts (D12), so those must be built before genesis can reference them | `networks/`, `contracts/src/vesting/` |
 | `blocks_per_year` | 21,038,400 (1.5 s) | scales issuance linearly; must match observed block time | gov param, after testnet-1 |
-| `min_gas_price` | 0 | base fee can decay to ~0 when idle; a floor guarantees a minimum burn and spam cost | feemarket gov param |
-| Whitepaper | not written | §2–§6 above are the material for its economics section (D7, D8 also pending there) | `whitepaper` |
+| Whitepaper | not written | §2–§7 above are the material for its economics section (D7, D8 also pending there) | `whitepaper` |
