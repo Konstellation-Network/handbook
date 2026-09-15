@@ -2,7 +2,8 @@
 
 **Audience:** coding agents and engineers working on any Konstellation repo.
 **Status:** pre-testnet. Nothing here is deployed yet.
-**Last updated:** 2026-09-13 (D1–D3 decided; cosmos/evm pin bumped to v0.7.3)
+**Last updated:** 2026-09-15 (D4–D9, D12 decided — all numbered open decisions in §11 are now
+resolved; WKASH renamed from WKONS)
 
 Load this document as context before working in any `konstellation-network/*` repo.
 Section 2 contains hard constraints that must not be violated without an explicit
@@ -400,7 +401,7 @@ SHA256, any `config.toml` or `app.toml` changes, and a rollback note.
 ```
 contracts/
 ├── src/
-│   ├── WKONS.sol
+│   ├── WKASH.sol                # wrapped native token; post-genesis deploy, not a preinstall
 │   └── vesting/                # Solidity vesting — NOT x/auth vesting accounts
 ├── script/
 │   └── VerifyPreinstalls.s.sol
@@ -661,7 +662,10 @@ Operators only need the binary pre-staged; they do not need to be awake.
 
 ## 10. Compliance design space
 
-Under evaluation, not yet decided. Enforcement can live at three levels:
+**D6 decided 2026-09-15: the compliance precompile row below.** Kept in full for reference —
+the ante-decorator and token-contract alternatives explain what the precompile approach
+deliberately trades away (broader coverage, or narrower per-token scope). Enforcement lives at
+one of three levels:
 
 | Level | Coverage | Cost |
 |---|---|---|
@@ -707,16 +711,16 @@ Each of these blocks something. Assign an owner and a date.
 | D1 | ~~Numeric EIP-155 chain ID~~ **DECIDED 2026-09-13: mainnet 5667, testnet 56671** | — | Both verified absent from `ethereum-lists/chains` on 2026-09-13. Register there before testnet launch. |
 | D2 | ~~Token symbol, base denom, decimals~~ **DECIDED 2026-09-13: KASH / `esp` / 18** | — | Native 18-decimal, no `x/precisebank`. `akash` deliberately avoided (Akash Network collision). Not changeable post-genesis. |
 | D3 | ~~Bech32 prefix~~ **DECIDED 2026-09-13: `kons`** | — | |
-| D4 | **Emission model** | `x/mint`, whitepaper | SDK default is dynamic 7–20% inflation targeting 67% bonded — poor optics for a payments token. Alternative: fixed per-block emission on a decay curve from a pre-mint. Requires a custom module. |
-| D5 | **Base fee disposition** | `app.go`, whitepaper | Default routes EIP-1559 base fee through `x/distribution`. Burn requires custom fee-collector wiring. Changing later is a visible economic change. |
-| D6 | **Compliance scope** | `x/compliance`, audit scope, positioning | See §10. Decide before the audit is scoped. |
-| D7 | **Validator set model** | genesis, whitepaper | 5–10 self-run validators is a permissioned network. Consider the SDK's native POA module with a published decentralisation roadmap. State it honestly either way. |
-| D8 | **Launch value ceiling** | bridge, treasury | Strong recommendation: no bridge on day one, or hard daily caps + IBC rate limiting, soaking at modest value for a month. |
-| D9 | **Audit firm and scope** | timeline, budget | Lead times run weeks to months. Start scoping calls now. See §12. |
+| D4 | ~~Emission model~~ **DECIDED 2026-09-15: stake-based issuance, modelled on Ethereum's post-merge formula** — issuance is a pure function of total bonded stake (`∝ √(total bonded)`), no bonded-*ratio* targeting loop like the SDK default. Pairs with D5's burn for a net issuance-minus-burn dynamic. | `x/mint`, whitepaper | Requires a custom module (not SDK-default). Care needed that the curve doesn't create a stake-concentration incentive at `max_validators` 30 (D10). |
+| D5 | ~~Base fee disposition~~ **DECIDED 2026-09-15: burn** the EIP-1559 base fee | `app.go`, whitepaper | Replaces the SDK default of routing base fee through `x/distribution`. Requires custom fee-collector wiring in `app.go`. Combines with D4 for Ethereum-style net issuance. |
+| D6 | ~~Compliance scope~~ **DECIDED 2026-09-15: compliance precompile at a fixed address** (`isVerified(address)`), not a chain-wide ante decorator | `x/compliance` scope narrowed, audit scope, positioning | See §10. Solidity contracts opt in by calling the precompile; native/bank transfers are not gated. Narrower blast radius than the ante-decorator option; still needs a freeze-list authority/governance design. |
+| D7 | ~~Validator set model~~ **DECIDED 2026-09-15: state it honestly — 5–10 self-run validators is permissioned at launch**, with validators added over time as the network decentralises (published roadmap) | genesis, whitepaper | Does not require undoing D10's already-shipped PoS/staking wiring (the POA alternative would have). |
+| D8 | ~~Launch value ceiling~~ **DECIDED 2026-09-15: no bridge on day one** | bridge, treasury | Immediate next steps once the chain is live: (1) soak period (§15 phase 9); (2) in parallel, build + audit the bridge contract and the IBC rate-limiting middleware (§13); (3) calibrate hard daily/total caps using soak-period usage signal; (4) open the bridge only once soak is clean, both are audited, and caps are set — enforced in the contract, never the frontend. The non-bridge §13 rails (`x/circuit`, halt drill) proceed regardless of bridge timing. |
+| D9 | ~~Audit firm and scope~~ **DECIDED 2026-09-15: Informal Systems** | timeline, budget | Lead times run weeks to months — start scoping calls now. Scope should follow "audit the delta" (§12) once Phase 3 safety rails and the D6 compliance precompile are stable, not before. |
 | D10 | ~~Staking params~~ **DECIDED 2026-09-14: DPoS, capped active set. Unbonding 21d, `min_commission_rate` 5%, `max_validators` 30, downtime slash 0.01%, double-sign slash 5%** | — | `max_validators` 30 (not the earlier 100+ draft) is a deliberate DPoS cap, not an SDK default carried over. Implemented in `app/config/chain.go` + `app/app.go` `DefaultGenesis`. |
 | D11 | ~~Governance params~~ **DECIDED: min deposit 10 KASH, expedited 50 KASH (2026-09-13); voting period 3d, quorum 33.4%, threshold 50% (2026-09-14, SDK/Cosmos Hub defaults except voting period)** | — | `app/config/chain.go` + `app/app.go` `DefaultGenesis`. `ExpeditedVotingPeriod` (1d), `VetoThreshold` (33.4%), `ExpeditedThreshold` (66.7%) left at SDK default — not named by D11. Lengthen voting period later as the validator set decentralises. |
 | D13 | ~~Krakatoa app-side EVM mempool~~ **DECIDED 2026-09-14: keep ON** (matches cosmos/evm v0.7 default; `init` already writes `mempool.type = "app"` — no code change needed) | — | Independent of BlockSTM. Every validator's `config.toml`+`app.toml` must agree; turning it off later means coordinating that flip across the whole validator set at once. |
-| D12 | **Vesting mechanism** | contracts, genesis | Decided in principle: Solidity vesting contracts, **not** `x/auth` vesting accounts. KiiChain attributed its exploit to a flaw touching vesting accounts and balance handling. Confirm and implement. |
+| D12 | ~~Vesting mechanism~~ **DECIDED 2026-09-15 (confirmed; was already decided in principle): Solidity vesting contracts**, not `x/auth` vesting accounts | contracts, genesis | KiiChain attributed its exploit to a flaw touching vesting accounts and balance handling. `contracts/src/vesting/` is the next open build item here. |
 
 ---
 
