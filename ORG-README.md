@@ -7,6 +7,7 @@ repo with its own history, branches and remote — exactly like repos under a Gi
 Konstellation-Network/        the org (NOT a git repo itself)
 ├── CLAUDE.md                 instructions auto-loaded by coding agents
 ├── ENGINEERING.md            what we are building, hard constraints, repo map
+├── TOKENOMICS.md             every economic parameter: issuance, burn, staking, gov
 ├── wt                        helper script
 ├── konstellation/            repo — the chain, produces konstellationd
 ├── networks/                 repo — genesis, peers, upgrades

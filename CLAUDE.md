@@ -12,6 +12,9 @@ remote. The org directory itself is not a git repo. Extra worktrees live under
    be violated without an explicit human decision recorded in that file.
    Then read `STATUS.md`: where the work stands, decisions already made, things
    that look like bugs but are deliberate, and the next steps in order.
+   `TOKENOMICS.md` holds every economic number (issuance, burn, staking, gov
+   params) and their interactions — read it before touching any of them, and
+   update it in the same change when one moves.
 2. Identify which repo you are in (`git rev-parse --show-toplevel`) and read its
    section under `ENGINEERING.md §5` (org map) and `§6` (repo structures) before
    editing.

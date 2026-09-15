@@ -718,7 +718,10 @@ Prior art to study: Provenance, Noble, Canton Network, Kinto, ERC-3643.
 
 ## 11. Open decisions
 
-Each of these blocks something. Assign an owner and a date.
+Each of these blocks something. Assign an owner and a date. The economic
+parameters these decisions produced — and how they interact — are collected in
+`TOKENOMICS.md`; that file is the source of truth for the *numbers*, this table
+for the *decisions*.
 
 | # | Decision | Blocks | Notes |
 |---|---|---|---|
