@@ -1,6 +1,6 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-15 (D6 semantics/authority decided, team vesting revocable, testnet
+**Updated:** 2026-09-15 (`networks` scaffolded — PR #1; D6 semantics/authority decided, team vesting revocable, testnet
 gov profile built — `konstellation` PR #7, stacked on #6. Also today: genesis allocation
 decided (`TOKENOMICS.md §7`); D6 re-decided to a chain-wide `x/compliance`;
 `ENGINEERING.md §18` testnet-vs-mainnet matrix. Open PRs: #5 (D4/D5, review findings fixed in `9c51d8b`), #6 (gov deposit 1000/5000,
@@ -114,8 +114,20 @@ rest (`rpc-endpoints.md`, `upgrades.md`, joining testnet-1) stays stubbed until
 `networks/testnet-1` exists. Hosting/domain for the site is undecided
 (`docusaurus.config.js` `url` is a placeholder).
 
-All other repos (`networks`, `explorer`, `whitepaper`, `chain-config`,
-`faucet`, `.github`) exist on GitHub, private, with an `init` commit only.
+`networks` is scaffolded in **PR #1** (https://github.com/Konstellation-Network/networks/pull/1,
+open 2026-09-15, CI green): `ENGINEERING.md §6.2` layout, `CODEOWNERS`,
+`scripts/verify.sh` + CI enforcing the §5.2 `genesis.sha256` invariant (plus
+`chain_id == directory` in `genesis.json`/`chain.json`, peer-file format, the six
+mandatory `upgrades/*.md` sections), `scripts/gen-genesis.sh` (reproducible:
+`init` + allocations in whole KASH summing to `TOKENOMICS.md §7`'s 1 B + gentxs +
+pinned `GENESIS_TIME`; verified byte-identical across runs against the dev binary
+with 5 real gentxs), `testnet-1/{chain.json,allocations.example.json,README.md}`
+join docs with TBDs marked, `templates/upgrade.md`, `RELEASES.md` checksum ledger.
+**No `genesis.json` yet, deliberately** — it waits on konstellation #5–#7, D6 and
+the §2a restart panic; cutting one now would only be regenerated.
+
+All other repos (`explorer`, `whitepaper`, `chain-config`, `faucet`) exist on
+GitHub, private, with an `init` commit only.
 
 ## 2. Decisions made (all recorded in ENGINEERING.md; every numbered decision D1–D13 is now resolved)
 
@@ -251,16 +263,22 @@ itself waits until validators exist, per §17's own text.
    prerequisite for D8's post-launch bridge sequencing.
 7. `tests/e2e` (interchaintest): first test should be the one upstream lacks —
    an EVM transfer *to a module account* must be rejected (§4.1.1 coverage gap).
-8. `networks/testnet-1/`: genesis comes straight from `konstellationd init
-   --chain-id testnet-1`; record its sha256 (§6.2).
+8. `networks/testnet-1/`: tooling and docs are in `networks` PR #1 (see §1). The
+   genesis itself: once #5–#7 are on `konstellation` `main`, D6 is built and the
+   §2a restart panic is fixed, tag a release, add it to `networks/RELEASES.md`,
+   fill `testnet-1/allocations.json` with the real test addresses (faucet, dev
+   multisig, five validator keys from `infra`), then
+   `GENESIS_TIME=… scripts/gen-genesis.sh testnet-1 --pre-gentx` → gentxs →
+   `--gentxs` → commit `genesis.json` + `genesis.sha256` (§6.2). Peers/endpoints
+   in `chain.json`, `seeds.txt`, `persistent_peers.txt` need `infra` applied.
 9. `.github` repo: **not** "org-wide `CODEOWNERS`" — GitHub doesn't support that;
    confirmed against GitHub's default-community-health-file docs 2026-09-15, which
    list `CONTRIBUTING`/`SECURITY`/`SUPPORT`/issue templates as org-defaultable and
    do not include `CODEOWNERS`. Added a `CODEOWNERS` template here (§17) plus notes
    in `README.md`/`ENGINEERING.md §5,§17` correcting the earlier wording. What's
-   still open: each of the other 8 repos needs its own committed `CODEOWNERS`,
+   still open: each of the other repos needs its own committed `CODEOWNERS`,
    copied from this template — that's a task for a session scoped to that repo, not
-   this one. (`ENGINEERING.md`, `CLAUDE.md`, `STATUS.md`, `wt` already live here;
+   this one. Done so far: `networks` (PR #1, 2026-09-15). (`ENGINEERING.md`, `CLAUDE.md`, `STATUS.md`, `wt` already live here;
    `bootstrap.sh` recreates the org dir.)
 10. `infra`: testnet-1 scaffold pushed (`0b011f4`), not yet a real deployment —
     see `infra/README.md` "Known gaps". Not blocking
