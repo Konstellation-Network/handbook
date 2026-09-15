@@ -1,14 +1,12 @@
 # Konstellation — Tokenomics
 
-**Last updated:** 2026-09-15 (community tax, gov deposit and min_gas_price decided; genesis allocation proposed, §7). Single source of truth for every economic parameter
+**Last updated:** 2026-09-15 (genesis allocation decided, §7; community tax, gov deposit, min_gas_price decided). Single source of truth for every economic parameter
 of the chain: what is decided, what it is set to, where in code it lives, and what
 is still open. `ENGINEERING.md §11` records *that* a decision was made;
 this file records the resulting numbers and how they interact. When a number
 here and the code disagree, the code is what validators run — fix this file.
 
-Numbers below assume a **1,000,000,000 KASH genesis supply**. That figure is an
-assumption D4's issuance constant was sized against on 2026-09-15; it becomes a
-fact when `networks/` genesis allocations are written (§7).
+Genesis supply is **1,000,000,000 KASH** (decided 2026-09-15 with the allocation in §7).
 
 ---
 
@@ -19,7 +17,7 @@ fact when `networks/` genesis allocations are written (§7).
 | Symbol | **KASH** | D2 |
 | Base denom | `esp`, 18 decimals (1 KASH = 10¹⁸ esp) | D2; `app/config/chain.go` |
 | Gas token | KASH (same asset, no wrapped/second token) | §3 |
-| Genesis supply | **1,000,000,000 KASH** (assumed, see §7) | — |
+| Genesis supply | **1,000,000,000 KASH** | §7 |
 | Max supply | **uncapped** (`x/mint` `max_supply = 0`) | `app/genesis.go` |
 | WKASH (ERC-20 wrapper) | post-genesis deploy, not a preinstall; the `werc20` precompile at `0xD4949664…` also exposes the native token to Solidity | `ENGINEERING.md §6.3` |
 
@@ -189,10 +187,10 @@ Code: `app/config/chain.go`, `app/app.go`.
 
 ---
 
-## 7. Genesis allocation — PROPOSED 2026-09-15, not yet confirmed
+## 7. Genesis allocation — DECIDED 2026-09-15
 
 Brief from the founders: favour the founding team, the community/developers,
-and a treasury. On a 1,000,000,000 KASH supply:
+and a treasury. Confirmed as proposed. On a 1,000,000,000 KASH supply:
 
 | Bucket | Share | KASH | Liquid at genesis | Vesting / release | Held by |
 |---|---|---|---|---|---|
@@ -239,11 +237,12 @@ front-loaded 30 / 25 / 20 / 15 / 10 %):
 | 4 | 220 M | 300 M | 250 M | 120 M | 80 M | **970 M (97 %)** |
 | 5 | 220 M | 330 M | 250 M | 120 M | 80 M | **1 000 M (100 %)** |
 
-What confirming this unblocks: the D12 vesting contracts get a concrete spec
-(cliff + linear, per-beneficiary, revocable by the foundation for team
-departures or not — **decide**), and `networks/testnet-1/genesis.json` can
-mirror the shape with test allocations. What it does not need yet: names and
-individual amounts inside the team bucket.
+What this unblocks: the D12 vesting contracts have a concrete spec (cliff +
+linear, per-beneficiary), and `networks/testnet-1/genesis.json` can mirror the
+shape with test allocations (`ENGINEERING.md §18`). Still needed before the
+contracts are written: whether team vesting is **revocable** by the foundation
+on departure (unvested tokens return to treasury) or not — **open**. Not needed
+yet: names and individual amounts inside the team bucket.
 
 ## 8. Open items
 
@@ -252,7 +251,8 @@ but numbers that are either assumed, defaulted, or need re-checking:
 
 | Item | Current | Why it matters | Where it gets settled |
 |---|---|---|---|
-| Genesis supply | 1 B KASH, **assumed** | F = 1265 was sized against it; a materially different supply should re-open F | confirm with §7 |
-| Genesis allocation & vesting | **proposed, §7** — awaiting confirmation | who holds what at block 1; team/treasury vesting is Solidity contracts (D12), so those must be built before genesis can reference them | `networks/`, `contracts/src/vesting/` |
+| Genesis supply | **1 B KASH, decided** with §7 | F = 1265 was sized against it | — |
+| Team vesting revocability | open | decides the D12 contract spec: can the foundation claw back unvested tokens on departure? | `contracts/src/vesting/` |
+| Per-network genesis profile | not built | testnet-1 should run short gov timings (`ENGINEERING.md §18`); needs `app/config` to know the network at `init` | `konstellation` |
 | `blocks_per_year` | 21,038,400 (1.5 s) | scales issuance linearly; must match observed block time | gov param, after testnet-1 |
 | Whitepaper | not written | §2–§7 above are the material for its economics section (D7, D8 also pending there) | `whitepaper` |

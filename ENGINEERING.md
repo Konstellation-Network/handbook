@@ -2,7 +2,7 @@
 
 **Audience:** coding agents and engineers working on any Konstellation repo.
 **Status:** pre-testnet. Nothing here is deployed yet.
-**Last updated:** 2026-09-15 (D4 F = 1265 set against a 1 B KASH genesis supply, built without a custom module; D4–D9, D12 decided — all numbered open decisions in §11 are now
+**Last updated:** 2026-09-15 (D6 re-decided to a chain-wide `x/compliance`; §18 testnet-vs-mainnet matrix added; D4 F = 1265 on a 1 B KASH supply; D4–D9, D12 decided — all numbered open decisions in §11 are now
 resolved; WKASH renamed from WKONS)
 
 Load this document as context before working in any `konstellation-network/*` repo.
@@ -342,7 +342,8 @@ konstellation/
 ├── cmd/konstellationd/
 │   ├── main.go
 │   └── root.go                # bech32 prefix, default home dir
-├── x/                         # empty unless a custom module exists
+├── x/
+│   └── compliance/            # D6: the one custom module — freeze/allow list, ante decorator, precompile
 ├── tests/e2e/                 # interchaintest
 ├── .github/workflows/
 │   ├── ci.yml                 # build, unit, lint
@@ -360,8 +361,7 @@ konstellation/
 │   ├── v2/upgrade.go          # one package per release, permanently
 │   └── v3/upgrade.go
 ├── x/
-│   ├── mint/                  # only if custom emission curve (see §11)
-│   └── compliance/            # only if regulated features (see §10)
+│   └── compliance/            # D6 (mint needs no module: D4 is x/mint's MintFn)
 ├── .github/
 │   ├── CODEOWNERS             # app.go and x/ require a second reviewer
 │   └── workflows/release.yml  # reproducible build, checksums, signed tag
@@ -676,10 +676,11 @@ Operators only need the binary pre-staged; they do not need to be awake.
 
 ## 10. Compliance design space
 
-**D6 decided 2026-09-15: the compliance precompile row below.** Kept in full for reference —
-the ante-decorator and token-contract alternatives explain what the precompile approach
-deliberately trades away (broader coverage, or narrower per-token scope). Enforcement lives at
-one of three levels:
+**D6 re-decided 2026-09-15: the ante-decorator row below, backed by an `x/compliance`
+module, with a precompile on top so Solidity sees the same list.** (An earlier same-day
+decision picked the precompile alone; the founders chose chain-wide coverage instead.) The
+table is kept in full because the risks paragraph at the end now applies without
+qualification. Enforcement lives at one of three levels:
 
 | Level | Coverage | Cost |
 |---|---|---|
@@ -730,7 +731,7 @@ for the *decisions*.
 | D3 | ~~Bech32 prefix~~ **DECIDED 2026-09-13: `kons`** | — | |
 | D4 | ~~Emission model~~ **DECIDED 2026-09-15: stake-based issuance, modelled on Ethereum's post-merge formula** — `annual issuance (KASH) = F × √(bonded KASH)`, **F = 1265**, chosen against a **1,000,000,000 KASH genesis supply** (8 % APR at 25 % bonded, 4 % at 100 %; yield = F ÷ √bonded). No bonded-*ratio* targeting loop like the SDK default. Pairs with D5's burn for a net issuance-minus-burn dynamic. | `app/issuance.go`, `app/config/chain.go`, whitepaper | No custom module: implemented as stock `x/mint`'s `MintFn` (SDK ≥ 0.53 hook), so `x/` stays empty. F is a protocol constant (like Ethereum's `BASE_REWARD_FACTOR`), changed only by upgrade, not gov. `blocks_per_year` is a gov param that must track real block time — re-derive from testnet-1 before mainnet. Stake concentration at `max_validators` 30 (D10): the curve is chain-wide and distribution stays pro-rata, so it adds no concentration incentive of its own. |
 | D5 | ~~Base fee disposition~~ **DECIDED 2026-09-15: burn** the EIP-1559 base fee | `app/feeburn.go`, `app.go`, whitepaper | Replaces the SDK default of routing base fee through `x/distribution`. Built as an app-level EndBlock step: `baseFee × BlockGasUsed` burned from the fee collector before `x/distribution` sweeps it; tips still go to validators. Fee collector holds `Burner`. Combines with D4 for Ethereum-style net issuance. |
-| D6 | ~~Compliance scope~~ **DECIDED 2026-09-15: compliance precompile at a fixed address** (`isVerified(address)`), not a chain-wide ante decorator | `x/compliance` scope narrowed, audit scope, positioning | See §10. Solidity contracts opt in by calling the precompile; native/bank transfers are not gated. Narrower blast radius than the ante-decorator option; still needs a freeze-list authority/governance design. |
+| D6 | ~~Compliance scope~~ ~~precompile only (2026-09-15, morning)~~ **RE-DECIDED 2026-09-15: `x/compliance` module with a chain-wide ante decorator**, plus a precompile exposing the same list to Solidity | `x/compliance` (the one custom module under `x/`), audit scope, positioning, whitepaper | See §10. The chain itself refuses any tx that touches a listed address — EVM and Cosmos, native KASH included — before execution; Solidity gets `isVerified(address)` / `isFrozen(address)` from a precompile backed by the same store. Accepted trade-off: widest coverage, the freeze key becomes the highest-value key on the chain, and the §10 legal-obligation and positioning risks apply in full and go in the whitepaper. **Still open, blocks the build:** list semantics (allowlist, blocklist, or both) and the authority (recommendation: both lists; changes by a foundation multisig with a 24 h timelock for non-emergency actions, governance can override/remove the authority; emergency freeze immediate but auto-expires unless ratified). Legal review before it ships. |
 | D7 | ~~Validator set model~~ **DECIDED 2026-09-15: state it honestly — 5–10 self-run validators is permissioned at launch**, with validators added over time as the network decentralises (published roadmap) | genesis, whitepaper | Does not require undoing D10's already-shipped PoS/staking wiring (the POA alternative would have). |
 | D8 | ~~Launch value ceiling~~ **DECIDED 2026-09-15: no bridge on day one** | bridge, treasury | Immediate next steps once the chain is live: (1) soak period (§15 phase 9); (2) in parallel, build + audit the bridge contract and the IBC rate-limiting middleware (§13); (3) calibrate hard daily/total caps using soak-period usage signal; (4) open the bridge only once soak is clean, both are audited, and caps are set — enforced in the contract, never the frontend. The non-bridge §13 rails (`x/circuit`, halt drill) proceed regardless of bridge timing. |
 | D9 | ~~Audit firm and scope~~ **DECIDED 2026-09-15: Informal Systems** | timeline, budget | Lead times run weeks to months — start scoping calls now. Scope should follow "audit the delta" (§12) once Phase 3 safety rails and the D6 compliance precompile are stable, not before. |
@@ -910,3 +911,38 @@ individuals" above, a repo's `CODEOWNERS` should list all engineers (or an org t
 once one exists — none does yet, see `gh api orgs/Konstellation-Network/teams`) as
 owners of a path, not one named person, except where a stricter rule is deliberately
 wanted (e.g. `konstellation`'s `app.go`/`x/` second-reviewer requirement, §6).
+
+---
+
+## 18. Testnet-1 vs konstellation-1: what differs
+
+**Rule: one binary, one codebase.** `konstellationd` does not know which network it
+is on beyond the chain-id checks in §1. Everything that differs between testnet-1
+and mainnet lives in exactly two places — the network's `genesis.json` in
+`networks/` and the environment in `infra/` — and every such difference is listed
+here. Anything testnet-only that is not in this table is a bug in the table.
+Agents: when you add something that is testnet-only or mainnet-only, add the row
+in the same change.
+
+| Area | testnet-1 | konstellation-1 (mainnet) | Why they differ |
+|---|---|---|---|
+| Cosmos chain-id / EIP-155 id | `testnet-1` / 56671 | `konstellation-1` / 5667 | replay domains (D1); enforced in code both ways |
+| Token value | none; faucet-fed | real, from day one | — |
+| Genesis supply & allocation | same 1 B shape as `TOKENOMICS.md §7`, filled with **test addresses**; faucet holds the "liquidity" bucket | `TOKENOMICS.md §7` with real beneficiaries and D12 vesting contracts | testnet exercises the shape, not the money |
+| Issuance (D4), burn (D5), staking (D10) | identical | identical | testnet must measure what mainnet will do |
+| `blocks_per_year` | initial estimate (1.5 s) | **set from testnet-1's observed block time** | the only tokenomics param testnet exists to calibrate |
+| Governance timing & deposits | **proposed:** voting 2 h, expedited 30 min, deposits 10 / 50 KASH — needs a per-network genesis profile in `app/config` (not built yet) | 3 d / 1 d, 1 000 / 5 000 KASH (D11) | upgrade drills and param changes on testnet should take hours, not days |
+| Validator set | 5–10 in-house (phase 5), then 3–5 external operators (phase 6) | 5–10 self-run, permissioned at launch (D7); decentralisation roadmap in whitepaper | testnet is where outsiders find the doc gaps |
+| Value ceiling & bridges | none needed | **value ceiling at launch, no bridge on day one** (D8) | limits mainnet blast radius while the chain soaks |
+| Compliance (D6) | `x/compliance` on, list authority = **a dev multisig / test key** | `x/compliance` on, list authority = foundation multisig with timelock (pending decision) | same code path, different key holders |
+| Infra | Hetzner + GCP; GCP validators on **Local SSD** (ephemeral, testnet-1 only, see `infra/README.md`); bastion/monitoring hosts and dedicated Horcrux cosigners still gaps | persistent disks everywhere; Horcrux cosigners, bastion, monitoring, backups all mandatory before genesis | double-sign risk (§2.7) is theoretical on testnet, financial on mainnet |
+| Faucet | required (`faucet` repo) | does not exist | — |
+| Audit | runs against testnet-1 code (phase 4 precedes phase 5) | audit report published before genesis (D9, §12) | — |
+| Bug bounty | optional | live before genesis (phase 7) | — |
+| BlockSTM | off | off at launch; enabled by governance after a clean shadow-node month (phase 10) | §2.5 |
+| State-breaking upgrade drill, chaos test, halt/restart | **must all happen here** (phase 5) | never rehearsed for the first time on mainnet | — |
+| Explorer, docs, chain-config | both networks | both networks | — |
+
+How to read this against `STATUS.md`: STATUS says what is *built*; this table says
+which network each thing is *for*. If a STATUS entry is testnet-only it should say
+so and point here.
