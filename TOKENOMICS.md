@@ -149,11 +149,11 @@ Slashed stake is burned. Code: `app/config/chain.go`, `app/app.go`.
 
 | Parameter | Value | Note |
 |---|---|---|
-| Min proposal deposit | **1 000 KASH** | to enter the voting period (raised from SDK default 10, 2026-09-15, PR #6) |
-| Expedited min deposit | **5 000 KASH** | 1-day vote, ⅔ threshold |
+| Min proposal deposit | **1 000 KASH** | to enter the voting period (raised from SDK default 10, 2026-09-15, PR #6). **testnet-1: 10** |
+| Expedited min deposit | **5 000 KASH** | 1-day vote, ⅔ threshold. **testnet-1: 50** |
 | Max deposit period | 2 days | SDK default |
-| Voting period | **3 days** | lengthen as the set decentralises |
-| Expedited voting period | 1 day | SDK default |
+| Voting period | **3 days** | lengthen as the set decentralises. **testnet-1: 2 h** (`ENGINEERING.md §18`) |
+| Expedited voting period | 1 day | SDK default. **testnet-1: 30 min** |
 | Quorum | **33.4 %** | of bonded stake |
 | Pass threshold | **50 %** | of non-abstain votes |
 | Expedited threshold | 66.7 % | SDK default |
@@ -239,9 +239,11 @@ front-loaded 30 / 25 / 20 / 15 / 10 %):
 
 What this unblocks: the D12 vesting contracts have a concrete spec (cliff +
 linear, per-beneficiary), and `networks/testnet-1/genesis.json` can mirror the
-shape with test allocations (`ENGINEERING.md §18`). Still needed before the
-contracts are written: whether team vesting is **revocable** by the foundation
-on departure (unvested tokens return to treasury) or not — **open**. Not needed
+shape with test allocations (`ENGINEERING.md §18`). Team vesting is
+**revocable** (decided 2026-09-15): the foundation multisig may revoke a
+departing member's grant; unvested tokens return to the treasury, vested
+tokens are the beneficiary's. Treasury and community schedules are not
+revocable. Not needed
 yet: names and individual amounts inside the team bucket.
 
 ## 8. Open items
@@ -252,7 +254,5 @@ but numbers that are either assumed, defaulted, or need re-checking:
 | Item | Current | Why it matters | Where it gets settled |
 |---|---|---|---|
 | Genesis supply | **1 B KASH, decided** with §7 | F = 1265 was sized against it | — |
-| Team vesting revocability | open | decides the D12 contract spec: can the foundation claw back unvested tokens on departure? | `contracts/src/vesting/` |
-| Per-network genesis profile | not built | testnet-1 should run short gov timings (`ENGINEERING.md §18`); needs `app/config` to know the network at `init` | `konstellation` |
 | `blocks_per_year` | 21,038,400 (1.5 s) | scales issuance linearly; must match observed block time | gov param, after testnet-1 |
 | Whitepaper | not written | §2–§7 above are the material for its economics section (D7, D8 also pending there) | `whitepaper` |
