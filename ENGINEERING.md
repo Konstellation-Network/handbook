@@ -333,6 +333,8 @@ konstellation/
 │   ├── app.go                 # module wiring, ante chain, precompile map
 │   ├── encoding.go
 │   ├── genesis.go
+│   ├── preinstalls/           # verbatim copies of contracts/preinstalls/*.json, go:embed'd;
+│   │                          # codeHash + EntryPoint↔SenderCreator pairing checked at init
 │   └── upgrades/
 │       └── noop.go
 ├── cmd/konstellationd/
@@ -409,7 +411,9 @@ contracts/
 │   ├── Multicall3.json         # 0xcA11bde05977b3631167028862bE2a173976CA11
 │   ├── Permit2.json
 │   ├── EntryPointV07.json
+│   ├── SenderCreatorV07.json   # 0xEFC2c1444eBCC4Db75e7613d20C6a62fF67A167C — required by EntryPointV07
 │   ├── EntryPointV08.json
+│   ├── SenderCreatorV08.json   # 0x449ED7C3e6Fee6a97311d4b55475DF59C44AdD33 — required by EntryPointV08
 │   └── Create2Deployer.json
 ├── test/
 │   └── GenesisBytecode.t.sol   # asserts genesis blob == compiled artifact
@@ -418,6 +422,14 @@ contracts/
 
 Preinstalls must sit at their **canonical mainnet addresses** — wallet SDKs and
 tooling hard-code them.
+
+A preinstall never runs its constructor, so anything its constructor would have
+deployed must be preinstalled too. Each ERC-4337 `EntryPoint` `CREATE`s a
+`SenderCreator` (nonce 1) and stores the address as an immutable; without it
+every UserOp carrying `initCode` and every `getSenderAddress()` reverts, and the
+address (`CREATE(entryPoint, 1)`) cannot be recreated post-genesis.
+`konstellation/app/preinstalls` enforces the pairing at `konstellationd init`
+(see §6.1).
 
 ### 6.4 `infra` — private, permanently
 

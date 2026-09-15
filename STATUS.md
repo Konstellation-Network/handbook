@@ -1,9 +1,10 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-15 (PR #3 merged — D10/D11 genesis params + feemarket
-`min_gas_multiplier` landed on `main`; D4–D9 and D12 all decided, closing out every
-numbered open decision in `ENGINEERING.md §11`; `contracts`' `WKONS.sol` renamed to
-`WKASH.sol` locally, uncommitted — see §1 for what's still just sitting in working trees).
+**Updated:** 2026-09-15 (`konstellation` PR #4 merged — genesis preinstalls wired,
+including the two `SenderCreator`s a review pass found missing, pinned via `contracts`
+PR #1; Phase 2 genesis/preinstall work is now complete, D4/D5/D6 module builds remain.
+Earlier the same day: PR #3 merged, D4–D9 and D12 decided, `WKONS`→`WKASH` rename
+committed).
 Read after `ENGINEERING.md`. This
 file is *state*: where we are, why things look the way they do, and what is next.
 `ENGINEERING.md` is *policy*. When they disagree, `ENGINEERING.md` wins and this file is stale
@@ -19,7 +20,7 @@ Launch sequence (`ENGINEERING.md §15`):
 |---|---|
 | 0 — scaffold `konstellation`, pin cosmos/evm, zero local replaces | **done** — PR #1, merged 2026-09-14 |
 | 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, seven review passes, 29 findings fixed, last pass zero medium+ |
-| 2 — customise: genesis params, preinstalls, custom modules | **in progress** — D10/D11 genesis params merged; preinstall wiring, `x/mint` (D4), fee-burn (D5) and compliance precompile (D6) still to build |
+| 2 — customise: genesis params, preinstalls, custom modules | **in progress** — genesis params (PR #3) and preinstalls (PR #4) merged; `x/mint` (D4), fee-burn (D5) and compliance precompile (D6) still to build |
 | 3 — safety rails (§13) | not started |
 | 4+ | not started |
 
@@ -43,6 +44,22 @@ unexercised live — first genuine trigger will be the next actual cosmos/evm ta
 rather than an incidental one). **Merged** into `main` as `21da290` on 2026-09-14; CI
 (`build-test`, `lint`, `vuln/binary`) green before merge.
 
+`konstellation` PR #4 (https://github.com/Konstellation-Network/konstellation/pull/4)
+— genesis preinstalls. New `app/preinstalls` package `go:embed`s verbatim copies of
+`contracts/preinstalls/*.json` and, on load, re-checks `keccak256(code) == codeHash`,
+runs x/vm's `Preinstall.Validate`, refuses address collisions with cosmos/evm's
+`DefaultPreinstalls`, and enforces an EntryPoint↔SenderCreator dependency map (the
+dependency's address must literally occur in the dependant's bytecode) — so a bad or
+half re-pin fails at `konstellationd init`, not `InitChain`. Genesis now carries **10
+preinstalls**: cosmos/evm's 5 + `EntryPointV07`, `SenderCreatorV07`, `EntryPointV08`,
+`SenderCreatorV08`, `Create2Deployer`. **Merged** into `main` as `dc1a4db` on 2026-09-15;
+CI green. A `/code-review` pass found one HIGH before merge — the EntryPoints were
+shipped without their `SenderCreator`s, which made `getSenderAddress()` and any UserOp
+with `initCode` revert with empty data (reproduced on a local node) — fixed in `65fa2de`
+after pinning the two contracts in `contracts` PR #1. Verified on a fresh node:
+`eth_getCode` byte-matches every pin, and `getSenderAddress` reverts with
+`SenderAddressResult` (`0x6ca7b806`) on both v0.7 and v0.8.
+
 `infra` has a testnet-1 scaffold, split across two clouds at the user's
 request: 3 validators/sentries + 1 archive on Hetzner, 2 validators/sentries +
 1 archive + 1 RPC on GCP (terraform modules per provider, ansible roles for
@@ -61,28 +78,28 @@ GCP, given the double-sign risk in `ENGINEERING.md §2.7`. See
 `terraform apply` (bastion host, monitoring host, dedicated horcrux cosigners,
 version pins, state backend).
 
-`contracts` has a Foundry project scaffolded and pushed to `main` (`018e3a5`,
-2026-09-14): a wrapped native token (KASH/`esp`, 18 decimals),
-`preinstalls/{Multicall3,Permit2,EntryPointV07,EntryPointV08,Create2Deployer}.json`
-(deployed bytecode pinned from live mainnet `eth_getCode`, each with a `codeHash`
-guard), `test/GenesisBytecode.t.sol` (offline self-consistency check) and
-`script/VerifyPreinstalls.s.sol` (live check against a real RPC fork — run and
-passing against mainnet at pin time), plus a CI workflow running
-`forge fmt`/`build`/`test`. Multicall3 and Permit2 are already in cosmos/evm's
-`DefaultPreinstalls` at identical addresses/bytecode (verified byte-for-byte);
-EntryPointV07, EntryPointV08 and Create2Deployer are **not** and still need
-explicit genesis wiring in `konstellation` (see Phase 2, §5 step 4).
+`contracts` has a Foundry project on `main` (scaffolded `018e3a5`, 2026-09-14): a
+wrapped native token (KASH/`esp`, 18 decimals), `preinstalls/*.json` (deployed
+bytecode pinned from live mainnet `eth_getCode`, each with a `codeHash` guard),
+`test/GenesisBytecode.t.sol` (offline self-consistency check) and
+`script/VerifyPreinstalls.s.sol` (live check against a real RPC fork), plus a CI
+workflow running `forge fmt`/`build`/`test`. Seven pins as of 2026-09-15:
+`Multicall3`, `Permit2` (both already in cosmos/evm's `DefaultPreinstalls`,
+byte-identical — no wiring needed), `EntryPointV07`, `SenderCreatorV07`,
+`EntryPointV08`, `SenderCreatorV08`, `Create2Deployer`. The two `SenderCreator`s
+were added in `contracts` PR #1 (`b004681`, merged `bb09088` 2026-09-15, two
+independent RPCs agreeing; live `VerifyPreinstalls.s.sol` → all 7 OK) after the
+`konstellation` PR #4 review found the EntryPoints unusable without them. All five
+non-default pins are wired into genesis by `konstellation` PR #4 — **`contracts` is the
+source of truth; `konstellation/app/preinstalls/*.json` must stay byte-identical.**
 
-**Uncommitted, 2026-09-15:** the wrapped-token contract was renamed `WKONS` →
-`WKASH` (`src/WKONS.sol` → `src/WKASH.sol`, contract name, `symbol`, error strings,
-`test/GenesisBytecode.t.sol`'s import/test name, `README.md`) to match the D2 token
-symbol (KASH) instead of the chain name — `git mv` done, `forge build`/`forge test`
-both green (2 passed), but **not committed or pushed**. It ships as a **post-genesis
-deploy, not a genesis preinstall** (decided 2026-09-14 in conversation, recorded in
-`ENGINEERING.md §6.3`) — predictable address available via `Create2Deployer` +
-a fixed salt without the permanence cost of baking bespoke, not-yet-audited
-bytecode into `genesis.json`. `src/vesting/` is still not built; D12 is now fully
-decided (Solidity vesting contracts), so this is unblocked, just not started.
+The wrapped-token contract was renamed `WKONS` → `WKASH` (`57cb107`, 2026-09-15)
+to match the D2 token symbol. It ships as a **post-genesis deploy, not a genesis
+preinstall** (decided 2026-09-14, recorded in `ENGINEERING.md §6.3`) — predictable
+address available via `Create2Deployer` + a fixed salt without the permanence cost
+of baking bespoke, not-yet-audited bytecode into `genesis.json`. `src/vesting/` is
+still not built; D12 is decided (Solidity vesting contracts), so this is unblocked,
+just not started.
 
 `docs` has a Docusaurus site scaffolded and pushed to `main` (`2f2e598`, 2026-09-14):
 stub docs pages, no real content written yet.
@@ -113,6 +130,7 @@ All other repos (`networks`, `explorer`, `whitepaper`, `chain-config`,
 | feemarket `min_gas_multiplier` | **0.5**, explicit (PR #3, `21da290`) — upstream default, now a recorded decision | §3; `app/config/chain.go` |
 | Chain-id invariant | **genesis.json decides the network; every per-node file is checked against it, in both directions** (a real network's EVM id is used only by that network) | §1 |
 | WKASH (was WKONS) | renamed 2026-09-15 to match the D2 token symbol; ships as a **post-genesis deploy**, not a genesis preinstall — see §1 | §6.3, §11 |
+| Genesis preinstalls (2026-09-15) | cosmos/evm's 5 defaults + `EntryPointV07`/`V08`, each with its `SenderCreator`, + `Create2Deployer` at canonical mainnet addresses — **merged, PR #4 (`dc1a4db`)**. Bytecode source of truth is `contracts/preinstalls/`; a preinstall never runs its constructor, so constructor-deployed companions must be preinstalled too | §6.1, §6.3; `app/preinstalls/` |
 
 ## 3. Things that are deliberate and easy to mistake for bugs
 
@@ -142,9 +160,22 @@ and produces a correct node. Specifically, in `konstellation`:
 - `scripts/vulncheck.sh` wraps govulncheck (source nightly, binary on PRs) and
   fails on any reachable finding not justified in `.govulncheck-allowlist`.
   Four entries are allow-listed; every one is explained in §4.1.1.
-- feemarket `min_gas_multiplier = 0.5`: a tx is charged at least half its gas
-  limit. Set explicitly in PR #3 (`21da290`) — now a recorded decision, not an
-  incidental default.
+- feemarket `min_gas_multiplier = 0.5` is **not** a per-tx charge. It is a
+  block-level floor on the `gasWanted` the feemarket module records for the
+  EIP-1559 base-fee update (`gasWanted = max(gasWanted × 0.5, gasUsed)`), so a
+  proposer can't push the base fee down by reporting high `gasWanted` with low
+  `gasUsed`. Set explicitly in PR #3 (`21da290`) — now a recorded decision, not
+  an incidental default.
+- `app/preinstalls/*.json` are verbatim copies of `contracts/preinstalls/*.json`,
+  not a second source. They are duplicated because `konstellation` cannot import
+  a Foundry repo; `Load()` re-verifies each `codeHash` and the
+  EntryPoint↔SenderCreator pairing at `init`, so an out-of-step copy fails fast.
+  When re-pinning, change `contracts` first, then copy.
+- `SenderCreatorV07`/`V08` look redundant next to the EntryPoints but are not:
+  each EntryPoint's bytecode hard-references its SenderCreator as an immutable
+  and a preinstall never runs the constructor that would have deployed it.
+  Dropping either makes `getSenderAddress()` and every UserOp with `initCode`
+  revert with empty data (`konstellation` PR #4 review; tests cover it).
 
 ## 4. Open decisions
 
@@ -166,14 +197,12 @@ itself waits until validators exist, per §17's own text.
 3. ~~Put names in `ENGINEERING.md §17`~~ decided 2026-09-14: shared ownership,
    any engineer, with triggers and deadlines per row (see §17). Only the on-call
    row still needs a rota, when validators exist.
-4. Phase 2 in `konstellation`: ~~set D10~~ ~~set D11~~ ~~decide D13~~ ~~set
-   feemarket `min_gas_multiplier`~~ all merged via **PR #3 (`21da290`,
-   2026-09-14)**. Remaining Phase 2 preinstall work: `contracts` has pinned
-   bytecode ready (2026-09-14, see §1) for `EntryPointV07`, `EntryPointV08`
-   and `Create2Deployer` — wire these into `app/genesis.go`'s preinstall list
-   (`Multicall3`/`Permit2` need no action, already covered by cosmos/evm's
-   `DefaultPreinstalls`). `WKASH` is **not** part of this list — decided
-   2026-09-15 as a post-genesis deploy (see §1, §2).
+4. ~~Phase 2 genesis params and preinstalls in `konstellation`~~ done: D10, D11,
+   D13 and feemarket `min_gas_multiplier` via **PR #3 (`21da290`, 2026-09-14)**;
+   `EntryPointV07`/`V08` + `SenderCreatorV07`/`V08` + `Create2Deployer` preinstalls
+   via **PR #4 (`dc1a4db`, 2026-09-15)**, bytecode from `contracts` PR #1. `WKASH`
+   is deliberately not a preinstall (post-genesis deploy, see §1, §2). What is
+   left of Phase 2 is step 5's module work.
 5. Build what D4/D5/D6/D9/D12 decided (all `konstellation`/`contracts` unless noted):
    - **D4 (emission):** custom `x/mint`-equivalent module implementing
      stake-based issuance (`∝ √(total bonded)`), wired alongside D5's burn.
