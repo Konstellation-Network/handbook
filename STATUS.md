@@ -1,10 +1,10 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-15 (`konstellation` PR #4 merged — genesis preinstalls wired,
-including the two `SenderCreator`s a review pass found missing, pinned via `contracts`
-PR #1; Phase 2 genesis/preinstall work is now complete, D4/D5/D6 module builds remain.
-Earlier the same day: PR #3 merged, D4–D9 and D12 decided, `WKONS`→`WKASH` rename
-committed).
+**Updated:** 2026-09-15 (`konstellation` PR #5 open — D4 √bonded issuance (F = 1265,
+assuming a 1 B KASH genesis supply) and D5 base-fee burn built and verified on a local
+node, no custom module needed. Earlier the same day: PR #4 merged (preinstalls incl. the
+two `SenderCreator`s via `contracts` PR #1), PR #3 merged, D4–D9 and D12 decided,
+`WKONS`→`WKASH` rename committed).
 Read after `ENGINEERING.md`. This
 file is *state*: where we are, why things look the way they do, and what is next.
 `ENGINEERING.md` is *policy*. When they disagree, `ENGINEERING.md` wins and this file is stale
@@ -121,8 +121,8 @@ All other repos (`networks`, `explorer`, `whitepaper`, `chain-config`,
 | D1 EIP-155 ids (2026-09-13) | mainnet **5667**, testnet-1 **56671**, local/unknown **56670** | §1, §11 |
 | D2 token (2026-09-13) | **KASH**, base denom `esp`, 18 decimals, no precisebank | §1, §11 |
 | D3 bech32 (2026-09-13) | `kons` | §1, §11 |
-| D4 emission (2026-09-15) | **stake-based issuance modelled on Ethereum post-merge** (`∝ √(total bonded)`), no bonded-ratio targeting loop. Pairs with D5's burn. Requires a custom `x/mint`-style module — **not yet built**. | §11 |
-| D5 base fee (2026-09-15) | **burn** the EIP-1559 base fee, replacing the `x/distribution` default. Requires custom fee-collector wiring in `app.go` — **not yet built**. | §11 |
+| D4 emission (2026-09-15) | **stake-based issuance modelled on Ethereum post-merge**: `annual KASH = F × √(bonded KASH)`, **F = 1265** against an assumed **1 B KASH genesis supply** (8 % APR at 25 % bonded, 4 % at 100 %). No bonded-ratio loop. Built as stock `x/mint`'s `MintFn` — no custom module — **PR #5, open** | §11; `app/issuance.go`, `app/config/chain.go` |
+| D5 base fee (2026-09-15) | **burn** the EIP-1559 base fee: `baseFee × BlockGasUsed` burned from the fee collector at EndBlock, tips still to validators — **PR #5, open** | §11; `app/feeburn.go` |
 | D6 compliance (2026-09-15) | **compliance precompile at a fixed address** (`isVerified(address)`), not a chain-wide ante decorator. Custom precompile, no fork — **not yet built**. | §10, §11 |
 | D7 validator set (2026-09-15) | state it honestly: 5–10 self-run = **permissioned at launch**, validators added over time as the network decentralises (roadmap to be published in whitepaper) | §11 |
 | D8 launch value ceiling (2026-09-15) | **no bridge on day one**; post-launch sequence (soak → build+audit bridge & IBC rate-limit middleware in parallel → calibrate caps → open with caps enforced in-contract) recorded in §11 | §11, §13 |
@@ -211,12 +211,15 @@ itself waits until validators exist, per §17's own text.
    is deliberately not a preinstall (post-genesis deploy, see §1, §2). What is
    left of Phase 2 is step 5's module work.
 5. Build what D4/D5/D6/D9/D12 decided (all `konstellation`/`contracts` unless noted):
-   - **D4 (emission):** custom `x/mint`-equivalent module implementing
-     stake-based issuance (`∝ √(total bonded)`), wired alongside D5's burn.
-     Not started.
-   - **D5 (base fee):** custom fee-collector wiring in `app.go` to burn the
-     EIP-1559 base fee instead of routing it through `x/distribution`. Not
-     started — natural to build alongside D4 since they interact.
+   - ~~**D4 (emission)**~~ ~~**D5 (base fee)**~~ built together in
+     **PR #5** (https://github.com/Konstellation-Network/konstellation/pull/5,
+     open 2026-09-15): `app/issuance.go` (√bonded curve as `x/mint`'s `MintFn`,
+     F = 1265) and `app/feeburn.go` (EndBlock burn of `baseFee × BlockGasUsed`).
+     Verified on a local node: curve to the digit; EVM and Cosmos txs each burn
+     exactly `baseFee × gasUsed`; Δsupply = Σminted − Σburned. Two things still
+     owed: re-derive `blocks_per_year` from observed testnet-1 block time before
+     mainnet (gov param), and the **1 B KASH genesis supply** F was sized
+     against is an assumption until `networks/` allocations exist.
    - **D6 (compliance):** a compliance precompile at a fixed address exposing
      `isVerified(address)` to Solidity, plus whatever freeze-list authority/
      governance design backs it (§10 risks apply: freeze-authority key
