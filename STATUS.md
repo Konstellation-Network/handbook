@@ -1,9 +1,10 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-15 (genesis allocation decided — `TOKENOMICS.md §7`; D6 re-decided
-to a chain-wide `x/compliance` module; `ENGINEERING.md §18` added: testnet-1 vs mainnet
-matrix, one binary, differences only in `networks/` + `infra/`. `konstellation` PR #5
-(D4/D5) and PR #6 (gov deposit 1000/5000, community tax, min_gas_price) open. Earlier the same day: PR #4 merged (preinstalls incl. the
+**Updated:** 2026-09-15 (D6 semantics/authority decided, team vesting revocable, testnet
+gov profile built — `konstellation` PR #7, stacked on #6. Also today: genesis allocation
+decided (`TOKENOMICS.md §7`); D6 re-decided to a chain-wide `x/compliance`;
+`ENGINEERING.md §18` testnet-vs-mainnet matrix. Open PRs: #5 (D4/D5), #6 (gov deposit
+1000/5000, community tax, min_gas_price), #7 (network profiles) — merge in that order. Earlier the same day: PR #4 merged (preinstalls incl. the
 two `SenderCreator`s via `contracts` PR #1), PR #3 merged, D4–D9 and D12 decided,
 `WKONS`→`WKASH` rename committed).
 Read after `ENGINEERING.md`. This
@@ -124,7 +125,7 @@ All other repos (`networks`, `explorer`, `whitepaper`, `chain-config`,
 | D3 bech32 (2026-09-13) | `kons` | §1, §11 |
 | D4 emission (2026-09-15) | **stake-based issuance modelled on Ethereum post-merge**: `annual KASH = F × √(bonded KASH)`, **F = 1265** against an assumed **1 B KASH genesis supply** (8 % APR at 25 % bonded, 4 % at 100 %). No bonded-ratio loop. Built as stock `x/mint`'s `MintFn` — no custom module — **PR #5, open** | §11; `app/issuance.go`, `app/config/chain.go` |
 | D5 base fee (2026-09-15) | **burn** the EIP-1559 base fee: `baseFee × BlockGasUsed` burned from the fee collector at EndBlock, tips still to validators — **PR #5, open** | §11; `app/feeburn.go` |
-| D6 compliance (re-decided 2026-09-15) | **`x/compliance` module + chain-wide ante decorator**, with a precompile so Solidity sees the same list. Was "precompile only" earlier the same day. Blocked on list semantics + authority (see §11 D6 for the recommendation) and legal review — **not yet built** | §10, §11, §18 |
+| D6 compliance (re-decided 2026-09-15) | **`x/compliance` module + chain-wide ante decorator**, with a precompile so Solidity sees the same list. Was "precompile only" earlier the same day. Semantics + authority decided 2026-09-15 (§11 D6); legal review still needed — **not yet built, next** | §10, §11, §18 |
 | D7 validator set (2026-09-15) | state it honestly: 5–10 self-run = **permissioned at launch**, validators added over time as the network decentralises (roadmap to be published in whitepaper) | §11 |
 | D8 launch value ceiling (2026-09-15) | **no bridge on day one**; post-launch sequence (soak → build+audit bridge & IBC rate-limit middleware in parallel → calibrate caps → open with caps enforced in-contract) recorded in §11 | §11, §13 |
 | D9 audit (2026-09-15) | **Informal Systems** | §11, §12 |
@@ -225,9 +226,10 @@ itself waits until validators exist, per §17's own text.
      ante decorator rejecting any tx touching a listed address (EVM + Cosmos),
      precompile exposing `isVerified`/`isFrozen` to Solidity, list authority
      with timelock. Re-decided 2026-09-15 from precompile-only to chain-wide.
-     **Blocked on:** list semantics and authority (recommendation in
-     `ENGINEERING.md §11` D6), and legal review (§10 risks apply in full).
-     Not started.
+     Semantics and authority decided 2026-09-15 (`ENGINEERING.md §11` D6:
+     allowlist + blocklist, foundation multisig, 24 h timelock, emergency
+     freeze auto-expires, gov override). **Unblocked — next build.** Legal
+     review before it ships (§10 risks apply in full).
    - **D12 (vesting):** `contracts/src/vesting/` — Solidity vesting
      contracts. Fully unblocked now; not started.
    - **D9 (audit):** start scoping calls with Informal Systems now (lead
