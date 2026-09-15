@@ -240,8 +240,15 @@ itself waits until validators exist, per §17's own text.
    an EVM transfer *to a module account* must be rejected (§4.1.1 coverage gap).
 8. `networks/testnet-1/`: genesis comes straight from `konstellationd init
    --chain-id testnet-1`; record its sha256 (§6.2).
-9. `.github` repo: org-wide CODEOWNERS. (`ENGINEERING.md`, `CLAUDE.md`,
-   `STATUS.md`, `wt` already live there; `bootstrap.sh` recreates the org dir.)
+9. `.github` repo: **not** "org-wide `CODEOWNERS`" — GitHub doesn't support that;
+   confirmed against GitHub's default-community-health-file docs 2026-09-15, which
+   list `CONTRIBUTING`/`SECURITY`/`SUPPORT`/issue templates as org-defaultable and
+   do not include `CODEOWNERS`. Added a `CODEOWNERS` template here (§17) plus notes
+   in `README.md`/`ENGINEERING.md §5,§17` correcting the earlier wording. What's
+   still open: each of the other 8 repos needs its own committed `CODEOWNERS`,
+   copied from this template — that's a task for a session scoped to that repo, not
+   this one. (`ENGINEERING.md`, `CLAUDE.md`, `STATUS.md`, `wt` already live here;
+   `bootstrap.sh` recreates the org dir.)
 10. `infra`: testnet-1 scaffold pushed (`0b011f4`), not yet a real deployment —
     see `infra/README.md` "Known gaps". Not blocking
     anything above; runs in parallel given terraform/ansible lead time. Before

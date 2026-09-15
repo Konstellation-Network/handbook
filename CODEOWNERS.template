@@ -1,0 +1,18 @@
+# Template only — GitHub has no org-wide default CODEOWNERS (see ENGINEERING.md
+# §17 and README.md). Copy this into the *target repo* as `CODEOWNERS` (repo root,
+# `.github/`, or `docs/`) and commit it there; a copy left only in this repo does
+# nothing for other repos' pull requests.
+#
+# Ownership here is decided (ENGINEERING.md §17) as shared across engineering, not
+# assigned to individuals — so paths are owned by every current engineer, not one
+# named person. No GitHub team exists yet (`gh api orgs/Konstellation-Network/teams`
+# returns none); swap this list for a team once one is created.
+#
+# Update the usernames below if org membership changes
+# (`gh api orgs/Konstellation-Network/members --jq '.[].login'`).
+
+* @defidevrel @Evangel90 @Levi-Ojukwu @OlolaJaco @Psalmuel01
+
+# Repos that want a stricter rule than "any engineer" (e.g. konstellation's
+# app.go/x/ second-reviewer requirement, ENGINEERING.md §6) should add their own
+# more specific path rule below this line — CODEOWNERS uses last-match-wins.

@@ -272,7 +272,9 @@ konstellation-network/
 │
 ├── chain-config           ← npm package for dapp devs. Public. (pre-mainnet)
 ├── faucet                 ← testnet token faucet. Public. (pre-mainnet)
-└── .github                ← org-wide CODEOWNERS, shared workflows. (pre-mainnet)
+└── .github                ← shared workflows, CODEOWNERS template. (pre-mainnet)
+                             (CODEOWNERS itself is per-repo — GitHub has no
+                             org-wide default for it; see §17.)
 ```
 
 **There is exactly one repo that produces an executable: `konstellation`.**
@@ -896,3 +898,12 @@ Rules that make "any engineer" real:
 Before this model was recorded, v0.7.3 (a critical, state-breaking fix) shipped
 on 3 Sep 2026 and was noticed on 13 Sep, by chance. The automation closes the
 noticing gap; these rules close the responding gap.
+
+**`CODEOWNERS` and this model:** GitHub has no org-wide default `CODEOWNERS` — it
+only reads a file committed to *that* repo (root, `.github/`, or `docs/`), so each
+repo needs its own copy; `.github`'s copy is a template to copy from, not something
+GitHub applies for other repos automatically. To match "shared, not assigned to
+individuals" above, a repo's `CODEOWNERS` should list all engineers (or an org team,
+once one exists — none does yet, see `gh api orgs/Konstellation-Network/teams`) as
+owners of a path, not one named person, except where a stricter rule is deliberately
+wanted (e.g. `konstellation`'s `app.go`/`x/` second-reviewer requirement, §6).
