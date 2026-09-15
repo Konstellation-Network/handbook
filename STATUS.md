@@ -46,8 +46,12 @@ rather than an incidental one). **Merged** into `main` as `21da290` on 2026-09-1
 `infra` has a testnet-1 scaffold, split across two clouds at the user's
 request: 3 validators/sentries + 1 archive on Hetzner, 2 validators/sentries +
 1 archive + 1 RPC on GCP (terraform modules per provider, ansible roles for
-node/cosmovisor/horcrux/monitoring/firewall, prometheus alert rules) — not yet
-committed there, not yet applied against real infrastructure. The GCP
+node/cosmovisor/horcrux/monitoring/firewall, prometheus alert rules) —
+**committed locally as `0b011f4`, not yet pushed to origin**, and not yet
+applied against real infrastructure. This matches `ENGINEERING.md §1`'s own
+"5-10 nodes across multiple cloud providers" target and §9.3's "nodes find
+each other over the public internet regardless of provider" — multi-cloud
+here isn't a deviation, it's the documented baseline. The GCP
 validators use Local SSD, which is ephemeral across host maintenance events;
 this was a deliberate testnet-1-only call (documented at length in
 `terraform/modules/gcp/validator`'s `local_ssd_count` variable and
@@ -199,12 +203,12 @@ itself waits until validators exist, per §17's own text.
    --chain-id testnet-1`; record its sha256 (§6.2).
 9. `.github` repo: org-wide CODEOWNERS. (`ENGINEERING.md`, `CLAUDE.md`,
    `STATUS.md`, `wt` already live there; `bootstrap.sh` recreates the org dir.)
-10. `infra`: testnet-1 scaffold exists (terraform + ansible), not yet a real
-    deployment — see `infra/README.md` "Known gaps". Not blocking anything
-    above; runs in parallel given terraform/ansible lead time. Before a real
-    `terraform apply`: pick the state backend, stand up a bastion + monitoring
-    host (neither has a terraform module yet), and fill in the empty
-    `konstellationd_version`/`*_sha256` vars once `konstellation` cuts a
+10. `infra`: testnet-1 scaffold committed locally (`0b011f4`), not pushed, not
+    yet a real deployment — see `infra/README.md` "Known gaps". Not blocking
+    anything above; runs in parallel given terraform/ansible lead time. Before
+    a real `terraform apply`: pick the state backend, stand up a bastion +
+    monitoring host (neither has a terraform module yet), and fill in the
+    empty `konstellationd_version`/`*_sha256` vars once `konstellation` cuts a
     release (waits on step 4-7 above).
 
 ## 6. Tooling and locations
