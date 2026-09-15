@@ -64,8 +64,8 @@ after pinning the two contracts in `contracts` PR #1. Verified on a fresh node:
 request: 3 validators/sentries + 1 archive on Hetzner, 2 validators/sentries +
 1 archive + 1 RPC on GCP (terraform modules per provider, ansible roles for
 node/cosmovisor/horcrux/monitoring/firewall, prometheus alert rules) —
-**committed locally as `0b011f4`, not yet pushed to origin**, and not yet
-applied against real infrastructure. This matches `ENGINEERING.md §1`'s own
+pushed to `origin/main` as `0b011f4`, but not yet applied against real
+infrastructure. This matches `ENGINEERING.md §1`'s own
 "5-10 nodes across multiple cloud providers" target and §9.3's "nodes find
 each other over the public internet regardless of provider" — multi-cloud
 here isn't a deviation, it's the documented baseline. The GCP
@@ -102,7 +102,14 @@ still not built; D12 is decided (Solidity vesting contracts), so this is unblock
 just not started.
 
 `docs` has a Docusaurus site scaffolded and pushed to `main` (`2f2e598`, 2026-09-14):
-stub docs pages, no real content written yet.
+stub docs pages, no real content written yet. CI (`npm ci && npm run build`, with
+`onBrokenLinks: 'throw'`) added 2026-09-15. Two pages can be filled from merged work
+without waiting for testnet: `contracts.md` (real preinstall addresses from
+`contracts/preinstalls/*.json` — the stub predates the `SenderCreator`s and omits them)
+and `run-a-validator.md` (`konstellationd init`/`start` behaviour from §3 below). The
+rest (`rpc-endpoints.md`, `upgrades.md`, joining testnet-1) stays stubbed until
+`networks/testnet-1` exists. Hosting/domain for the site is undecided
+(`docusaurus.config.js` `url` is a placeholder).
 
 All other repos (`networks`, `explorer`, `whitepaper`, `chain-config`,
 `faucet`, `.github`) exist on GitHub, private, with an `init` commit only.
@@ -232,8 +239,8 @@ itself waits until validators exist, per §17's own text.
    --chain-id testnet-1`; record its sha256 (§6.2).
 9. `.github` repo: org-wide CODEOWNERS. (`ENGINEERING.md`, `CLAUDE.md`,
    `STATUS.md`, `wt` already live there; `bootstrap.sh` recreates the org dir.)
-10. `infra`: testnet-1 scaffold committed locally (`0b011f4`), not pushed, not
-    yet a real deployment — see `infra/README.md` "Known gaps". Not blocking
+10. `infra`: testnet-1 scaffold pushed (`0b011f4`), not yet a real deployment —
+    see `infra/README.md` "Known gaps". Not blocking
     anything above; runs in parallel given terraform/ansible lead time. Before
     a real `terraform apply`: pick the state backend, stand up a bastion +
     monitoring host (neither has a terraform module yet), and fill in the
