@@ -1,13 +1,10 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-15 (`networks` scaffolded — PR #1; D6 semantics/authority decided, team vesting revocable, testnet
-gov profile built — `konstellation` PR #7, stacked on #6. Also today: genesis allocation
-decided (`TOKENOMICS.md §7`); D6 re-decided to a chain-wide `x/compliance`;
-`ENGINEERING.md §18` testnet-vs-mainnet matrix. Merged: #5 (D4/D5, `2dd606d`), #8 (restart panic fix, `642e7b3`), #6 (gov deposit
-1000/5000, community tax, min_gas_price, `a46cde7`). Open: #7 (network profiles, now
-based on `main`, one commit). **§2a: the restart-then-EVM-tx panic is root-caused (SDK `FeeRecipientModule` global unset until a Cosmos tx) and fixed in PR #8.** Earlier the same day: PR #4 merged (preinstalls incl. the
-two `SenderCreator`s via `contracts` PR #1), PR #3 merged, D4–D9 and D12 decided,
-`WKONS`→`WKASH` rename committed).
+**Updated:** 2026-09-16 — Phase 2 is merged except D6. On `konstellation` `main`
+(`ace9616`): D4 √bonded issuance + D5 base-fee burn (#5), restart-panic fix (#8, upstream
+cosmos/evm#1288), gov deposit 1000/5000 + community tax + min_gas_price (#6), grpc bump for
+three new advisories (#9), per-network genesis profiles (#7). No open PRs. Next:
+`x/compliance` (D6), then Phase 3 safety rails.
 Read after `ENGINEERING.md`. This
 file is *state*: where we are, why things look the way they do, and what is next.
 `ENGINEERING.md` is *policy*. When they disagree, `ENGINEERING.md` wins and this file is stale
@@ -23,7 +20,7 @@ Launch sequence (`ENGINEERING.md §15`):
 |---|---|
 | 0 — scaffold `konstellation`, pin cosmos/evm, zero local replaces | **done** — PR #1, merged 2026-09-14 |
 | 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, seven review passes, 29 findings fixed, last pass zero medium+ |
-| 2 — customise: genesis params, preinstalls, custom modules | **in progress** — genesis params (PR #3) and preinstalls (PR #4) merged; `x/mint` (D4), fee-burn (D5) and compliance precompile (D6) still to build |
+| 2 — customise: genesis params, preinstalls, custom modules | **in progress** — everything merged except D6: genesis params (#3), preinstalls (#4), D4 issuance + D5 burn (#5), econ params (#6), network profiles (#7). `x/compliance` (D6) is the last item |
 | 3 — safety rails (§13) | not started |
 | 4+ | not started |
 
@@ -150,6 +147,7 @@ GitHub, private, with an `init` commit only.
 | Go | `go 1.26.0` min, `toolchain go1.26.8` (1.25 is out of support) | §3 |
 | BlockSTM | OFF; **virtual fee collection also OFF** (same bundle) | §2.5, §7.3 |
 | feemarket `min_gas_multiplier` | **0.5**, explicit (PR #3, `21da290`) — upstream default, now a recorded decision | §3; `app/config/chain.go` |
+| Dependency: grpc | **v1.83.2** (PR #9, `2f3880e`, 2026-09-16) for GO-2026-6348 / -6441 / -6443, all reachable. `make vulncheck-binary` now builds with symbols so local matches CI | §4.1, §4.3 |
 | Chain-id invariant | **genesis.json decides the network; every per-node file is checked against it, in both directions** (a real network's EVM id is used only by that network) | §1 |
 | WKASH (was WKONS) | renamed 2026-09-15 to match the D2 token symbol; ships as a **post-genesis deploy**, not a genesis preinstall — see §1 | §6.3, §11 |
 | Genesis preinstalls (2026-09-15) | cosmos/evm's 5 defaults + `EntryPointV07`/`V08`, each with its `SenderCreator`, + `Create2Deployer` at canonical mainnet addresses — **merged, PR #4 (`dc1a4db`)**. Bytecode source of truth is `contracts/preinstalls/`; a preinstall never runs its constructor, so constructor-deployed companions must be preinstalled too | §6.1, §6.3; `app/preinstalls/` |
