@@ -111,8 +111,9 @@ rest (`rpc-endpoints.md`, `upgrades.md`, joining testnet-1) stays stubbed until
 `networks/testnet-1` exists. Hosting/domain for the site is undecided
 (`docusaurus.config.js` `url` is a placeholder).
 
-`networks` is scaffolded in **PR #1** (https://github.com/Konstellation-Network/networks/pull/1,
-open 2026-09-15, CI green): `ENGINEERING.md §6.2` layout, `CODEOWNERS`,
+`networks` is scaffolded — **PR #1** (https://github.com/Konstellation-Network/networks/pull/1)
+**merged** into `main` as `c88fd34` on 2026-09-16 after a `/code-review` pass (8 findings,
+1 medium: silent gentx failure; all reproduced and fixed): `ENGINEERING.md §6.2` layout, `CODEOWNERS`,
 `scripts/verify.sh` + CI enforcing the §5.2 `genesis.sha256` invariant (plus
 `chain_id == directory` in `genesis.json`/`chain.json`, peer-file format, the six
 mandatory `upgrades/*.md` sections), `scripts/gen-genesis.sh` (reproducible:
@@ -276,7 +277,7 @@ itself waits until validators exist, per §17's own text.
    in `README.md`/`ENGINEERING.md §5,§17` correcting the earlier wording. What's
    still open: each of the other repos needs its own committed `CODEOWNERS`,
    copied from this template — that's a task for a session scoped to that repo, not
-   this one. Done so far: `networks` (PR #1, 2026-09-15). (`ENGINEERING.md`, `CLAUDE.md`, `STATUS.md`, `wt` already live here;
+   this one. Done so far: `networks` (PR #1, merged 2026-09-16). (`ENGINEERING.md`, `CLAUDE.md`, `STATUS.md`, `wt` already live here;
    `bootstrap.sh` recreates the org dir.)
 10. `infra`: testnet-1 scaffold pushed (`0b011f4`), not yet a real deployment —
     see `infra/README.md` "Known gaps". Not blocking
