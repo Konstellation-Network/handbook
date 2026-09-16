@@ -3,8 +3,9 @@
 **Updated:** 2026-09-15 (`networks` scaffolded — PR #1; D6 semantics/authority decided, team vesting revocable, testnet
 gov profile built — `konstellation` PR #7, stacked on #6. Also today: genesis allocation
 decided (`TOKENOMICS.md §7`); D6 re-decided to a chain-wide `x/compliance`;
-`ENGINEERING.md §18` testnet-vs-mainnet matrix. Open PRs: #5 (D4/D5, review findings fixed in `9c51d8b`), #6 (gov deposit 1000/5000,
-community tax, min_gas_price), #7 (network profiles) — merge in that order. **§2a: the restart-then-EVM-tx panic is root-caused (SDK `FeeRecipientModule` global unset until a Cosmos tx) and fixed in PR #8.** Earlier the same day: PR #4 merged (preinstalls incl. the
+`ENGINEERING.md §18` testnet-vs-mainnet matrix. Merged: #5 (D4/D5, `2dd606d`), #8 (restart panic fix, `642e7b3`), #6 (gov deposit
+1000/5000, community tax, min_gas_price, `a46cde7`). Open: #7 (network profiles, now
+based on `main`, one commit). **§2a: the restart-then-EVM-tx panic is root-caused (SDK `FeeRecipientModule` global unset until a Cosmos tx) and fixed in PR #8.** Earlier the same day: PR #4 merged (preinstalls incl. the
 two `SenderCreator`s via `contracts` PR #1), PR #3 merged, D4–D9 and D12 decided,
 `WKONS`→`WKASH` rename committed).
 Read after `ENGINEERING.md`. This
@@ -142,7 +143,7 @@ GitHub, private, with an `init` commit only.
 | D8 launch value ceiling (2026-09-15) | **no bridge on day one**; post-launch sequence (soak → build+audit bridge & IBC rate-limit middleware in parallel → calibrate caps → open with caps enforced in-contract) recorded in §11 | §11, §13 |
 | D9 audit (2026-09-15) | **Informal Systems** | §11, §12 |
 | D10 (2026-09-14) | staking: DPoS, unbonding 21d, `min_commission_rate` 5%, **`max_validators` 30**, downtime slash 0.01%, double-sign slash 5% — **merged, PR #3 (`21da290`)** | §11; `app/config/chain.go` + `app/app.go` |
-| D11 | gov: min deposit **1 000 KASH** / expedited **5 000 KASH** (raised 2026-09-15 from 10 / 50, **PR #6, open**), refundable unless vetoed (pinned); voting period **3d**, quorum **33.4%**, threshold **50%** (2026-09-14, merged PR #3 `21da290`). testnet-1/dev: 2 h / 30 min / 10 / 50 (PR #7) | §11, §18; `app/config/chain.go` + `app/app.go` |
+| D11 | gov: min deposit **1 000 KASH** / expedited **5 000 KASH** (raised 2026-09-15 from 10 / 50, **PR #6 merged `a46cde7` 2026-09-16**), refundable unless vetoed (pinned); voting period **3d**, quorum **33.4%**, threshold **50%** (2026-09-14, merged PR #3 `21da290`). testnet-1/dev: 2 h / 30 min / 10 / 50 (PR #7) | §11, §18; `app/config/chain.go` + `app/app.go` |
 | D12 vesting (confirmed 2026-09-15) | Solidity vesting contracts, not `x/auth` vesting accounts. `contracts/src/vesting/` — **not yet built** | §11 |
 | D13 Krakatoa mempool (2026-09-14) | keep app-side EVM mempool **ON** — no code change, already the default behaviour | §11 |
 | cosmos/evm pin | **v0.7.3** (v0.7.2 has GHSA-367m-g444-9mg3) | §2.4, §3, §4.1 |
