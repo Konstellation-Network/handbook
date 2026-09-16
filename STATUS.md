@@ -1,6 +1,6 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-16 — **`x/compliance` built: konstellation PR #10, open.** The last
+**Updated:** 2026-09-16 — **`x/compliance` built: konstellation PR #10, open; two review passes addressed (automated + human), see PR.** The last
 Phase 2 item; the one custom module. Chain-wide block-list enforcement (EVM + Cosmos, with an
 immediate "address is frozen" at every submission path), timelocked authority with emergency
 freeze/expiry, governance override, read-only precompile at `0x…0900`, all verified live.
@@ -200,6 +200,14 @@ and produces a correct node. Specifically, in `konstellation`:
   a Foundry repo; `Load()` re-verifies each `codeHash` and the
   EntryPoint↔SenderCreator pairing at `init`, so an out-of-step copy fails fast.
   When re-pinning, change `contracts` first, then copy.
+- `app/mempool.go` wraps cosmos/evm's mempool (`complianceMempool`) so the D6
+  freeze check runs on the JSON-RPC's direct `Mempool.Insert` path. cosmos/evm's
+  `server/start.go` type-asserts `*evmmempool.Mempool` to call `SetClientCtx`;
+  that assertion no longer matches and the call is skipped. **Harmless on
+  v0.7.3 — the setter stores a value nothing reads.** Every upstream bump
+  (§17 upstream-release review) must grep `clientCtx` in `mempool/` and, if a
+  reader appeared, forward the call from the wrapper. Flagged by the PR #10
+  human review.
 - `SenderCreatorV07`/`V08` look redundant next to the EntryPoints but are not:
   each EntryPoint's bytecode hard-references its SenderCreator as an immutable
   and a preinstall never runs the constructor that would have deployed it.
@@ -255,7 +263,11 @@ itself waits until validators exist, per §17's own text.
      contracts. Fully unblocked now; not started.
    - **D9 (audit):** start scoping calls with Informal Systems now (lead
      times run weeks to months) — but per §12, actually schedule the audit
-     once Phase 3 + D6 are stable, not before.
+     once Phase 3 + D6 are stable, not before. **Scope changed 2026-09-16:**
+     `x/` was empty when D9 was decided; `x/compliance` (PR #10) adds
+     ~1,550 hand-written consensus-critical lines (keeper, ante extractor,
+     mempool pre-check, precompile) that must be in the statement of work,
+     alongside `app/feeburn.go` and `app/issuance.go`.
    - **D7/D8 (whitepaper):** the validator-decentralisation roadmap (D7) and
      the bridge/value-ceiling sequencing (D8, recorded in `ENGINEERING.md §11`)
      both need writing into `whitepaper`, which is currently `init`-only.

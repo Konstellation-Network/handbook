@@ -941,6 +941,7 @@ in the same change.
 | Value ceiling & bridges | none needed | **value ceiling at launch, no bridge on day one** (D8) | limits mainnet blast radius while the chain soaks |
 | Compliance (D6) | `x/compliance` on; list authority = **a dev multisig / test key**, short timelocks (`local_node.sh`: validator key, 60 s) | `x/compliance` on; list authority = **foundation multisig**, 24 h timelocks — set in `networks/konstellation-1/genesis.json`, after legal review (§10) | same code path, different key holders and timelocks |
 | Infra | Hetzner + GCP; GCP validators on **Local SSD** (ephemeral, testnet-1 only, see `infra/README.md`); bastion/monitoring hosts and dedicated Horcrux cosigners still gaps | persistent disks everywhere; Horcrux cosigners, bastion, monitoring, backups all mandatory before genesis | double-sign risk (§2.7) is theoretical on testnet, financial on mainnet |
+| IBC transfers **to** a frozen address | not gated (x/compliance gates signers, fee payers and direct on-chain recipients; an incoming ICS-20 packet is none of those) | **must be gated before any bridge/IBC channel opens** (D8): Phase 3 IBC middleware alongside rate limiting (§13) | testnet-1 has no external channels; mainnet opens none on day one |
 | Faucet | required (`faucet` repo) | does not exist | — |
 | Audit | runs against testnet-1 code (phase 4 precedes phase 5) | audit report published before genesis (D9, §12) | — |
 | Bug bounty | optional | live before genesis (phase 7) | — |
