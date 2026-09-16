@@ -1,10 +1,11 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-16 — Phase 2 is merged except D6. On `konstellation` `main`
-(`ace9616`): D4 √bonded issuance + D5 base-fee burn (#5), restart-panic fix (#8, upstream
-cosmos/evm#1288), gov deposit 1000/5000 + community tax + min_gas_price (#6), grpc bump for
-three new advisories (#9), per-network genesis profiles (#7). No open PRs. Next:
-`x/compliance` (D6), then Phase 3 safety rails.
+**Updated:** 2026-09-16 — **`x/compliance` built: konstellation PR #10, open.** The last
+Phase 2 item; the one custom module. Chain-wide block-list enforcement (EVM + Cosmos, with an
+immediate "address is frozen" at every submission path), timelocked authority with emergency
+freeze/expiry, governance override, read-only precompile at `0x…0900`, all verified live.
+Needs legal review (§10) and the mainnet authority address before it ships. Everything else in
+Phase 2 is on `main` (`ace9616`).
 Read after `ENGINEERING.md`. This
 file is *state*: where we are, why things look the way they do, and what is next.
 `ENGINEERING.md` is *policy*. When they disagree, `ENGINEERING.md` wins and this file is stale
@@ -20,7 +21,7 @@ Launch sequence (`ENGINEERING.md §15`):
 |---|---|
 | 0 — scaffold `konstellation`, pin cosmos/evm, zero local replaces | **done** — PR #1, merged 2026-09-14 |
 | 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, seven review passes, 29 findings fixed, last pass zero medium+ |
-| 2 — customise: genesis params, preinstalls, custom modules | **in progress** — everything merged except D6: genesis params (#3), preinstalls (#4), D4 issuance + D5 burn (#5), econ params (#6), network profiles (#7). `x/compliance` (D6) is the last item |
+| 2 — customise: genesis params, preinstalls, custom modules | **code complete, last PR open** — genesis params (#3), preinstalls (#4), D4 issuance + D5 burn (#5), econ params (#6), network profiles (#7) merged; `x/compliance` (D6) in **PR #10** |
 | 3 — safety rails (§13) | not started |
 | 4+ | not started |
 
@@ -136,7 +137,7 @@ GitHub, private, with an `init` commit only.
 | D3 bech32 (2026-09-13) | `kons` | §1, §11 |
 | D4 emission (2026-09-15) | **stake-based issuance modelled on Ethereum post-merge**: `annual KASH = F × √(bonded KASH)`, **F = 1265** against an assumed **1 B KASH genesis supply** (8 % APR at 25 % bonded, 4 % at 100 %). No bonded-ratio loop. Built as stock `x/mint`'s `MintFn` — no custom module — **PR #5, open** | §11; `app/issuance.go`, `app/config/chain.go` |
 | D5 base fee (2026-09-15) | **burn** the EIP-1559 base fee: `baseFee × BlockGasUsed` burned from the fee collector at EndBlock, tips still to validators — **PR #5, open** | §11; `app/feeburn.go` |
-| D6 compliance (re-decided 2026-09-15) | **`x/compliance` module + chain-wide ante decorator**, with a precompile so Solidity sees the same list. Was "precompile only" earlier the same day. Semantics + authority decided 2026-09-15 (§11 D6); legal review still needed — **not yet built, next** | §10, §11, §18 |
+| D6 compliance (re-decided 2026-09-15) | **`x/compliance` module + chain-wide ante decorator**, with a precompile so Solidity sees the same list. Was "precompile only" earlier the same day. Built — **PR #10 (open, 2026-09-16)**; legal review still needed before mainnet | §10, §11, §18 |
 | D7 validator set (2026-09-15) | state it honestly: 5–10 self-run = **permissioned at launch**, validators added over time as the network decentralises (roadmap to be published in whitepaper) | §11 |
 | D8 launch value ceiling (2026-09-15) | **no bridge on day one**; post-launch sequence (soak → build+audit bridge & IBC rate-limit middleware in parallel → calibrate caps → open with caps enforced in-contract) recorded in §11 | §11, §13 |
 | D9 audit (2026-09-15) | **Informal Systems** | §11, §12 |
@@ -241,14 +242,15 @@ itself waits until validators exist, per §17's own text.
      owed: re-derive `blocks_per_year` from observed testnet-1 block time before
      mainnet (gov param), and the **1 B KASH genesis supply** F was sized
      against is an assumption until `networks/` allocations exist.
-   - **D6 (compliance):** `x/compliance` module — freeze/allow list store,
-     ante decorator rejecting any tx touching a listed address (EVM + Cosmos),
-     precompile exposing `isVerified`/`isFrozen` to Solidity, list authority
-     with timelock. Re-decided 2026-09-15 from precompile-only to chain-wide.
-     Semantics and authority decided 2026-09-15 (`ENGINEERING.md §11` D6:
-     allowlist + blocklist, foundation multisig, 24 h timelock, emergency
-     freeze auto-expires, gov override). **Unblocked — next build.** Legal
-     review before it ships (§10 risks apply in full).
+   - ~~**D6 (compliance)**~~ built in **PR #10**
+     (https://github.com/Konstellation-Network/konstellation/pull/10, 2026-09-16):
+     `x/compliance` — allow + block lists, `MsgScheduleUpdate` behind the
+     timelock, `MsgEmergencyFreeze` with auto-expiry, `MsgGovUpdate` override,
+     ante enforcement across EVM and Cosmos plus a synchronous mempool
+     pre-check, `ICompliance` precompile at `0x…0900`. Verified live end to
+     end. Still owed before mainnet: **legal review** (§10), the foundation
+     multisig address in `networks/konstellation-1/genesis.json`, and (Phase 3)
+     IBC middleware so an incoming transfer to a frozen address is gated too.
    - **D12 (vesting):** `contracts/src/vesting/` — Solidity vesting
      contracts. Fully unblocked now; not started.
    - **D9 (audit):** start scoping calls with Informal Systems now (lead
