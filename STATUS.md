@@ -1,7 +1,8 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-19 — **Phase 2 loose ends closed on branch `phase2-loose-ends`
-(konstellation):** a block-list add now clears an existing EIP-7702 delegation (the
+**Updated:** 2026-09-19 — **Phase 2 complete. Loose ends merged: konstellation PR #11
+(`40bafaa`, 2026-09-19; one `/code-review` pass, one low finding, fixed):** a block-list add
+now clears an existing EIP-7702 delegation (the
 drain path the PR #10 reviews left open, reproduced and closed in the same test); the
 by-hand EVM checks from PR #10 are automated in a new in-process harness
 (`tests/integration`, `make test-integration`); `tests/e2e` is live — a `Dockerfile`
@@ -30,7 +31,7 @@ Launch sequence (`ENGINEERING.md §15`):
 |---|---|
 | 0 — scaffold `konstellation`, pin cosmos/evm, zero local replaces | **done** — PR #1, merged 2026-09-14 |
 | 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, seven review passes, 29 findings fixed, last pass zero medium+ |
-| 2 — customise: genesis params, preinstalls, custom modules | **done** — genesis params (#3), preinstalls (#4), D4 issuance + D5 burn (#5), econ params (#6), network profiles (#7), `x/compliance` (D6, #10 merged 2026-09-17); loose ends (7702 reset, integration harness) on `phase2-loose-ends`, 2026-09-19 |
+| 2 — customise: genesis params, preinstalls, custom modules | **done** — genesis params (#3), preinstalls (#4), D4 issuance + D5 burn (#5), econ params (#6), network profiles (#7), `x/compliance` (D6, #10 merged 2026-09-17), loose ends + both test harnesses (#11 merged `40bafaa` 2026-09-19) |
 | 3 — safety rails (§13) | not started |
 | 4+ | not started |
 
@@ -248,7 +249,7 @@ and produces a correct node. Specifically, in `konstellation`:
   indexer and RPC backend (§2.1), so instead the one case a user can hit by
   hand — a value transfer straight to a module account or precompile, the
   §4.1.1 guard — is now refused at the ante handler and the mempool
-  pre-check (`app/blocked_recipient.go`, 2026-09-19): `eth_sendRawTransaction`
+  pre-check (`app/blocked_recipient.go`, PR #11): `eth_sendRawTransaction`
   answers "… is not allowed to receive funds: it is the "fee_collector"
   module account", nothing is charged, the nonce is not consumed. Verified in
   `tests/integration` and against a real node in `tests/e2e`. Residual: value
@@ -308,8 +309,8 @@ itself waits until validators exist, per §17's own text.
      end. Still owed before mainnet: **legal review** (§10), the foundation
      multisig address in `networks/konstellation-1/genesis.json`, and (Phase 3)
      IBC middleware so an incoming transfer to a frozen address is gated too.
-     Follow-ups from the 2026-09-17 reviews, **both closed 2026-09-19** on
-     `phase2-loose-ends`: (a) the by-hand EVM checks (transfer, deploy,
+     Follow-ups from the 2026-09-17 reviews, **both closed in PR #11
+     (`40bafaa`, 2026-09-19)**: (a) the by-hand EVM checks (transfer, deploy,
      frozen sender at CheckTx + DeliverTx + Cosmos, frozen recipient,
      relayed 7702 authorization) are `tests/integration/compliance_test.go`,
      real signed txs through the real app — the test that would have caught
