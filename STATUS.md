@@ -1,7 +1,13 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-19 — **Phase 2 complete. Loose ends merged: konstellation PR #11
-(`40bafaa`, 2026-09-19; one `/code-review` pass, one low finding, fixed):** a block-list add
+**Updated:** 2026-09-19 — **Phase 3 (safety rails, §13) built on branch `phase3-safety-rails`:**
+`x/circuit` (SDK contrib, D14) wired into the router, ante chain and mempool pre-check;
+`x/ratelimit` (own module, D15 — nothing exists for ibc-go v11) as the outermost transfer
+middleware, v1 and v2; `x/compliance/ibc` gating incoming ICS-20 packets by the block list.
+Verified over a real Hermes-relayed channel between two nodes (`tests/e2e/ibc_test.go`):
+gov adds a 1 % limit, over-limit refused, at-limit lands, frozen receiver error-acked and
+refunded. The 3-of-5 multisig is a genesis entry per network, not code — still to be chosen.
+**Phase 2 complete: konstellation PR #11 (`40bafaa`, 2026-09-19):** a block-list add
 now clears an existing EIP-7702 delegation (the
 drain path the PR #10 reviews left open, reproduced and closed in the same test); the
 by-hand EVM checks from PR #10 are automated in a new in-process harness
@@ -32,7 +38,7 @@ Launch sequence (`ENGINEERING.md §15`):
 | 0 — scaffold `konstellation`, pin cosmos/evm, zero local replaces | **done** — PR #1, merged 2026-09-14 |
 | 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, seven review passes, 29 findings fixed, last pass zero medium+ |
 | 2 — customise: genesis params, preinstalls, custom modules | **done** — genesis params (#3), preinstalls (#4), D4 issuance + D5 burn (#5), econ params (#6), network profiles (#7), `x/compliance` (D6, #10 merged 2026-09-17), loose ends + both test harnesses (#11 merged `40bafaa` 2026-09-19) |
-| 3 — safety rails (§13) | not started |
+| 3 — safety rails (§13) | **built, on `phase3-safety-rails`** — circuit breaker (D14) + IBC rate limiting (D15) + IBC receive gate; bridge caps n/a (no bridge, D8); halt drill is a Phase 5 output |
 | 4+ | not started |
 
 `konstellation` PR #1 (https://github.com/Konstellation-Network/konstellation/pull/1)
@@ -155,6 +161,8 @@ GitHub, private, with an `init` commit only.
 | D11 | gov: min deposit **1 000 KASH** / expedited **5 000 KASH** (raised 2026-09-15 from 10 / 50, **PR #6 merged `a46cde7` 2026-09-16**), refundable unless vetoed (pinned); voting period **3d**, quorum **33.4%**, threshold **50%** (2026-09-14, merged PR #3 `21da290`). testnet-1/dev: 2 h / 30 min / 10 / 50 (PR #7) | §11, §18; `app/config/chain.go` + `app/app.go` |
 | D12 vesting (confirmed 2026-09-15) | Solidity vesting contracts, not `x/auth` vesting accounts. `contracts/src/vesting/` — **not yet built** | §11 |
 | D13 Krakatoa mempool (2026-09-14) | keep app-side EVM mempool **ON** — no code change, already the default behaviour | §11 |
+| D14 circuit breaker (2026-09-19) | SDK **`contrib/x/circuit`** (deprecated in 0.54, unmaintained — vendor if dropped) over a bespoke one. Gov is authority; ops multisig granted in genesis | §7.1, §11, §13, §18 |
+| D15 IBC rate limiting (2026-09-19) | **own `x/ratelimit`**: no module for ibc-go v11 exists; ibc-apps' semantics (% of supply, net flow, undo on error ack/timeout), gov-only messages, no whitelist | §11, §13 |
 | cosmos/evm pin | **v0.7.3** (v0.7.2 has GHSA-367m-g444-9mg3) | §2.4, §3, §4.1 |
 | Go | `go 1.26.0` min, `toolchain go1.26.8` (1.25 is out of support) | §3 |
 | BlockSTM | OFF; **virtual fee collection also OFF** (same bundle) | §2.5, §7.3 |
@@ -234,6 +242,16 @@ and produces a correct node. Specifically, in `konstellation`:
   CI runs it). Not optional: cosmos/evm's EVM chain config is a
   once-per-process global unless that tag is on, and every test builds its
   own app. `go test ./...` skips the directory silently.
+- Upstream `evmd` (and so our `app.go`) hands the transfer keeper the channel
+  keeper directly as its ICS4 wrapper, so the callbacks middleware is **not on
+  the send path** — only on receive. Its own comment says otherwise. Not
+  changed (matching upstream); the rate limiter is put on the send path
+  explicitly (`TransferKeeper.WithICS4Wrapper(rateLimitMiddleware)`) and
+  `tests/e2e/ibc_test.go` proves it is.
+- `x/ratelimit` error acks carry only the ABCI code (`ABCI code: 6`), as all
+  ibc-go error acks do; the reason and numbers are in the
+  `ratelimit_quota_exceeded` event on the receiving chain. A refused *send*
+  fails the tx with the full message.
 - `tests/e2e` is its own Go module (interchaintest v10.0.1 is on SDK 0.53
   and carries third-party `replace` pins; `ENGINEERING.md §2.2` records why
   that is fine). `go test ./...` from the repo root does not enter it;
@@ -336,9 +354,17 @@ itself waits until validators exist, per §17's own text.
    - **D7/D8 (whitepaper):** the validator-decentralisation roadmap (D7) and
      the bridge/value-ceiling sequencing (D8, recorded in `ENGINEERING.md §11`)
      both need writing into `whitepaper`, which is currently `init`-only.
-6. Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware
-   (§13). Both are `app.go` wiring, no fork. IBC rate limiting is also a
-   prerequisite for D8's post-launch bridge sequencing.
+6. ~~Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware
+   (§13)~~ **built 2026-09-19** on `phase3-safety-rails`. Not "just wiring" in the
+   end: SDK 0.54 moved `x/circuit` to unmaintained `contrib/` (used anyway, D14), and
+   no rate limiter exists for ibc-go v11, so `x/ratelimit` is ours (D15, ~800 lines +
+   proto, in the audit scope). Also `x/compliance/ibc` (§18 IBC-to-frozen row). Tests:
+   `x/ratelimit` keeper + mock-middleware units, `x/compliance/ibc` units,
+   `tests/integration/circuit_test.go` (trip/reset, authz-nested, EVM pause),
+   `tests/e2e/ibc_test.go` (two chains + Hermes, gov proposal, real transfers).
+   **Owed:** the 3-of-5 operations multisig address for `circuit.account_permissions`
+   in each network's genesis (a decision, not code); per-channel quotas by gov before
+   any mainnet channel opens (D8).
 7. ~~`tests/e2e` first test: EVM transfer *to a module account* rejected (§4.1.1)~~
    done 2026-09-19, twice: `tests/integration/module_account_test.go`
    (in-process, the x/vm guard itself, four module accounts) and
@@ -386,7 +412,8 @@ itself waits until validators exist, per §17's own text.
 - `konstellation`: `make build` (sha256 printed), `make verify-deps`,
   `make vulncheck` / `vulncheck-binary`, `make test-unit`, `make test-integration`
   (in-process app tests, `-tags test`; ~2 s), `make docker-build` + `make test-e2e`
-  (interchaintest against real nodes; ~3 min for four tests; Docker Desktop must be
+  (interchaintest against real nodes; ~8 min for five tests, the two-chain IBC one is
+  ~4 min and pulls `ghcr.io/informalsystems/hermes`; Docker Desktop must be
   running — `open -a Docker`), `make lint` / `lint-e2e`,
   `./local_node.sh -y` (dev chain, JSON-RPC :8545, metrics :26660, chain id 56670).
 - Dev mnemonics in `local_node.sh` are public; `dev0` = `0xC6Fe5D33615a1C52c08018c47E8Bc53646A0E101`.

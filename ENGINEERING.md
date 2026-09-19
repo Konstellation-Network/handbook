@@ -363,11 +363,16 @@ konstellation/
 │   ├── main.go
 │   └── root.go                # bech32 prefix, default home dir
 ├── x/
-│   └── compliance/            # D6: the one custom module (konstellation PR #10)
-│       ├── keeper/            # lists, timelocked queue, EndBlock, msg + query servers
-│       ├── ante/              # chain-wide block-list enforcement, wraps cosmos/evm's ante
-│       ├── precompile/        # read-only ICompliance at 0x…0900
-│       └── types/             # generated from proto/konstellation/compliance/v1
+│   ├── compliance/            # D6 (konstellation PR #10)
+│   │   ├── keeper/            # lists, timelocked queue, EndBlock, msg + query servers, 7702 reset
+│   │   ├── ante/              # chain-wide block-list enforcement, wraps cosmos/evm's ante
+│   │   ├── ibc/               # ICS-20 receive gate: no IBC funding of a frozen address (§18)
+│   │   ├── precompile/        # read-only ICompliance at 0x…0900
+│   │   └── types/             # generated from proto/konstellation/compliance/v1
+│   └── ratelimit/             # §13.2 / D15: IBC value-flow quotas, v1 + v2 middleware
+│       ├── keeper/            # limits, flows, windows, packet parsing
+│       ├── v2/                # IBC v2 middleware
+│       └── types/             # generated from proto/konstellation/ratelimit/v1
 ├── proto/                     # buf; `make proto-gen` (gocosmos + grpc-gateway)
 ├── tests/
 │   ├── integration/           # the real app in-process, driven with signed txs (`make test-integration`, `-tags test`)
@@ -539,7 +544,8 @@ and tokenomics changes need an auditable history.
 | EIP-712 signing (MetaMask signs Cosmos msgs) | `cosmos/evm` |
 | Permissioned EVM access control lists | `cosmos/evm` `x/vm` params |
 | Staking, distribution, gov, slashing, bank, auth | `cosmos-sdk` |
-| Upgrade orchestration, circuit breaker, evidence | `cosmos-sdk` |
+| Upgrade orchestration, evidence | `cosmos-sdk` |
+| Circuit breaker (`x/circuit`) | `cosmos-sdk` **`contrib/x/circuit`** — deprecated by Cosmos Labs in v0.54, unmaintained, outside their bug bounty. Used anyway (decided 2026-09-19, D14): ~1.3k stable lines, baseapp's `SetCircuitBreaker` hook is first-class. If a later SDK drops it, vendor it into `x/`. |
 | feegrant, authz | `cosmos-sdk` |
 | Consensus, p2p, mempool, state sync, snapshots | `cometbft` |
 | IBC clients, connections, channels, ICS20 | `ibc-go` |
@@ -548,7 +554,9 @@ and tokenomics changes need an auditable history.
 
 - `app.go` module wiring and **ante handler chain composition**
 - Custom precompiles (registered into the precompile map — does not need a fork)
-- Custom modules under `x/` (minter, compliance) if the decisions in §11 require them
+- Custom modules under `x/`: `compliance` (D6), `ratelimit` (§13.2, D15 — written
+  here because no rate-limiting module exists for ibc-go v11), and the
+  `compliance/ibc` receive gate (§18)
 - One upgrade handler package per release
 - Genesis parameter set
 - Numeric EIP-155 chain ID and Cosmos chain-id string
@@ -776,6 +784,8 @@ for the *decisions*.
 | D10 | ~~Staking params~~ **DECIDED 2026-09-14: DPoS, capped active set. Unbonding 21d, `min_commission_rate` 5%, `max_validators` 30, downtime slash 0.01%, double-sign slash 5%** | — | `max_validators` 30 (not the earlier 100+ draft) is a deliberate DPoS cap, not an SDK default carried over. Implemented in `app/config/chain.go` + `app/app.go` `DefaultGenesis`. |
 | D11 | ~~Governance params~~ **DECIDED: min deposit ~~10~~ **1 000 KASH**, expedited ~~50~~ **5 000 KASH** (raised 2026-09-15 once a 1 B supply was assumed; was 10 / 50 from 2026-09-13); deposits refundable on every outcome except veto (2026-09-15, pinned); voting period 3d, quorum 33.4%, threshold 50% (2026-09-14, SDK/Cosmos Hub defaults except voting period)** | — | `app/config/chain.go` + `app/app.go` `DefaultGenesis` (konstellation PR #6). `ExpeditedVotingPeriod` (1d), `VetoThreshold` (33.4%), `ExpeditedThreshold` (66.7%) left at SDK default — not named by D11. testnet-1/dev run 2 h / 30 min / 10 / 50 via the §18 profile (PR #7). Lengthen voting period later as the validator set decentralises. |
 | D13 | ~~Krakatoa app-side EVM mempool~~ **DECIDED 2026-09-14: keep ON** (matches cosmos/evm v0.7 default; `init` already writes `mempool.type = "app"` — no code change needed) | — | Independent of BlockSTM. Every validator's `config.toml`+`app.toml` must agree; turning it off later means coordinating that flip across the whole validator set at once. |
+| D14 | ~~Circuit breaker implementation~~ **DECIDED 2026-09-19: SDK `contrib/x/circuit`** (deprecated in v0.54, see §7.1) over a bespoke breaker | §13.1 | Authority is governance; the operations multisig gets `LEVEL_SUPER_ADMIN` through `account_permissions` in each network's `genesis.json` (§18), so the code needs no address. Checked at the router (covers authz-nested messages) and in the ante/mempool pre-check (refused at submission with the reason). Disabling `MsgEthereumTx` pauses the EVM; disabling `MsgTransfer` is the IBC emergency stop. |
+| D15 | ~~IBC rate limiting~~ **DECIDED 2026-09-19: own `x/ratelimit`** — no module exists for ibc-go v11 (ibc-apps' is v10-only, even on `main`); vendoring/porting its 4k lines was rejected in favour of ~800 lines modelled on its semantics | §13.2, D8 | Per (channel, denom) quotas as a % of the denom's supply snapshotted at window start, **net** flow (a round trip does not eat the quota), pending sends undone on error ack/timeout within the window, governance-only messages. Sits outermost on the transfer stack, v1 and v2. Simplifications, recorded: no address whitelist; async-ack failures leave inflow counted (stricter, never looser). Limits are set per channel by governance before the channel carries value; testnet-1 opens none. |
 | D12 | ~~Vesting mechanism~~ **DECIDED 2026-09-15 (confirmed; was already decided in principle): Solidity vesting contracts**, not `x/auth` vesting accounts | contracts, genesis | KiiChain attributed its exploit to a flaw touching vesting accounts and balance handling. `contracts/src/vesting/` is the next open build item here. **Team vesting is revocable (decided 2026-09-15):** the foundation multisig can revoke a departing team member's grant; unvested tokens return to the treasury, vested tokens stay with the beneficiary. Treasury and community schedules are not revocable. |
 
 ---
@@ -789,7 +799,9 @@ is wasted budget.
 **In scope:**
 
 - `app.go` module wiring and ante handler ordering
-- Custom modules under `x/`
+- Custom modules under `x/`: `compliance` (keeper, ante, mempool pre-check,
+  precompile, IBC gate), `ratelimit` (keeper, v1 + v2 middleware), and the
+  `contrib/x/circuit` wiring
 - Genesis parameters (a misconfigured param is a vulnerability)
 - Preinstall contracts and their deterministic addresses
 - Upgrade handlers (a bad migration bricks the chain)
@@ -813,10 +825,14 @@ and audit before lifting the cap.
 All four ship before any user money moves.
 
 1. **`x/circuit`** wired in `app.go`, authority held by a 3-of-5 multisig. Disables
-   specific message types without halting the chain.
+   specific message types without halting the chain. **Built 2026-09-19** (D14):
+   SDK `contrib/x/circuit`, router + ante + mempool pre-check; the multisig's
+   permission is a genesis entry per network (§18).
 2. **IBC rate limiting** middleware capping outflow per channel per time window.
    Highest-value single control on the list — converts "drained" into "lost one
-   window".
+   window". **Built 2026-09-19** (D15): `x/ratelimit`, governance-set quotas,
+   verified over a real Hermes-relayed channel in `tests/e2e`. Alongside it,
+   `x/compliance/ibc` gates incoming ICS-20 packets by the block list (§18).
 3. **Bridge caps** enforced in the contract, not the frontend.
 4. **A rehearsed halt drill** executed on testnet: simulated advisory at an awkward
    hour, halt at a height, patch, coordinated restart, back in under 90 minutes.
@@ -976,7 +992,9 @@ in the same change.
 | Value ceiling & bridges | none needed | **value ceiling at launch, no bridge on day one** (D8) | limits mainnet blast radius while the chain soaks |
 | Compliance (D6) | `x/compliance` on; list authority = **a dev multisig / test key**, short timelocks (`local_node.sh`: validator key, 60 s) | `x/compliance` on; list authority = **foundation multisig**, 24 h timelocks — set in `networks/konstellation-1/genesis.json`, after legal review (§10) | same code path, different key holders and timelocks |
 | Infra | Hetzner + GCP; GCP validators on **Local SSD** (ephemeral, testnet-1 only, see `infra/README.md`); bastion/monitoring hosts and dedicated Horcrux cosigners still gaps | persistent disks everywhere; Horcrux cosigners, bastion, monitoring, backups all mandatory before genesis | double-sign risk (§2.7) is theoretical on testnet, financial on mainnet |
-| IBC transfers **to** a frozen address | not gated (x/compliance gates signers, fee payers and direct on-chain recipients; an incoming ICS-20 packet is none of those) | **must be gated before any bridge/IBC channel opens** (D8): Phase 3 IBC middleware alongside rate limiting (§13) | testnet-1 has no external channels; mainnet opens none on day one |
+| IBC transfers **to** a frozen address | gated — `x/compliance/ibc` error-acks the packet, the sender chain refunds (built 2026-09-19) | same | same code, both networks; testnet-1 has no external channels to exercise it on, `tests/e2e` does |
+| IBC rate limits (`x/ratelimit`) | none: no external channels | set by governance per channel **before** the channel carries value (D8, D15); quotas calibrated from soak-period usage | limits are per-channel state in `genesis.json`/proposals, not code |
+| Circuit breaker admin (`x/circuit`) | `account_permissions`: a dev key, `LEVEL_SUPER_ADMIN` | `account_permissions`: the **3-of-5 operations multisig**, `LEVEL_SUPER_ADMIN` (§13.1) — set in `networks/konstellation-1/genesis.json` | same code path, different key holders |
 | Faucet | required (`faucet` repo) | does not exist | — |
 | Audit | runs against testnet-1 code (phase 4 precedes phase 5) | audit report published before genesis (D9, §12) | — |
 | Bug bounty | optional | live before genesis (phase 7) | — |
