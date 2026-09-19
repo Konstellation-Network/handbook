@@ -1,11 +1,15 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-16 — **`x/compliance` built: konstellation PR #10, open; two review passes addressed (automated + human), see PR.** The last
-Phase 2 item; the one custom module. Chain-wide block-list enforcement (EVM + Cosmos, with an
-immediate "address is frozen" at every submission path), timelocked authority with emergency
-freeze/expiry, governance override, read-only precompile at `0x…0900`, all verified live.
-Needs legal review (§10) and the mainnet authority address before it ships. Everything else in
-Phase 2 is on `main` (`ace9616`).
+**Updated:** 2026-09-19 — **Phase 2 loose ends closed on branch `phase2-loose-ends`
+(konstellation):** a block-list add now clears an existing EIP-7702 delegation (the
+drain path the PR #10 reviews left open, reproduced and closed in the same test); the
+by-hand EVM checks from PR #10 are automated in a new in-process harness
+(`tests/integration`, `make test-integration`); the §4.1.1 module-account test exists.
+`x/compliance` (PR #10) merged `9ad388b` 2026-09-17 — the last Phase 2 item. Chain-wide
+block-list enforcement (EVM + Cosmos, with an immediate "address is frozen" at every
+submission path), timelocked authority with emergency freeze/expiry, governance
+override, read-only precompile at `0x…0900`, all verified live. Needs legal review
+(§10) and the mainnet authority address before it ships. Phase 3 not started.
 Read after `ENGINEERING.md`. This
 file is *state*: where we are, why things look the way they do, and what is next.
 `ENGINEERING.md` is *policy*. When they disagree, `ENGINEERING.md` wins and this file is stale
@@ -21,7 +25,7 @@ Launch sequence (`ENGINEERING.md §15`):
 |---|---|
 | 0 — scaffold `konstellation`, pin cosmos/evm, zero local replaces | **done** — PR #1, merged 2026-09-14 |
 | 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, seven review passes, 29 findings fixed, last pass zero medium+ |
-| 2 — customise: genesis params, preinstalls, custom modules | **code complete, last PR open** — genesis params (#3), preinstalls (#4), D4 issuance + D5 burn (#5), econ params (#6), network profiles (#7) merged; `x/compliance` (D6) in **PR #10** |
+| 2 — customise: genesis params, preinstalls, custom modules | **done** — genesis params (#3), preinstalls (#4), D4 issuance + D5 burn (#5), econ params (#6), network profiles (#7), `x/compliance` (D6, #10 merged 2026-09-17); loose ends (7702 reset, integration harness) on `phase2-loose-ends`, 2026-09-19 |
 | 3 — safety rails (§13) | not started |
 | 4+ | not started |
 
@@ -207,7 +211,23 @@ and produces a correct node. Specifically, in `konstellation`:
   v0.7.3 — the setter stores a value nothing reads.** Every upstream bump
   (§17 upstream-release review) must grep `clientCtx` in `mempool/` and, if a
   reader appeared, forward the call from the wrapper. Flagged by the PR #10
-  human review.
+  human review; `app/upstream_pin_test.go` fails on any cosmos/evm version
+  change and prints this check (and the EIP-7702 one below) so it cannot be
+  skipped.
+- `x/compliance/ante` treats the authority of every EIP-7702 authorization
+  as a signer (PR #10 `/code-review`, 2026-09-17): without it a clean relayer
+  could install code on a frozen EOA and drain it by internal call. A
+  delegation installed *before* the freeze is cleared by the keeper at
+  freeze time (`x/compliance/keeper/delegation.go`, decided 2026-09-19,
+  `ENGINEERING.md §10`): only the `0xef0100‖addr` code hash goes, storage
+  stays, real contract bytecode is never touched. The keeper gets x/vm via
+  `SetEVMKeeper` in `app.New` because it is built before the EVM keeper
+  (the precompile needs it); `tests/integration` fails if that wiring is
+  dropped. Emits `compliance_delegation_reset`.
+- `tests/integration` is behind the `test` build tag (`make test-integration`,
+  CI runs it). Not optional: cosmos/evm's EVM chain config is a
+  once-per-process global unless that tag is on, and every test builds its
+  own app. `go test ./...` skips the directory silently.
 - `SenderCreatorV07`/`V08` look redundant next to the EntryPoints but are not:
   each EntryPoint's bytecode hard-references its SenderCreator as an immutable
   and a preinstall never runs the constructor that would have deployed it.
@@ -251,7 +271,9 @@ itself waits until validators exist, per §17's own text.
      mainnet (gov param), and the **1 B KASH genesis supply** F was sized
      against is an assumption until `networks/` allocations exist.
    - ~~**D6 (compliance)**~~ built in **PR #10**
-     (https://github.com/Konstellation-Network/konstellation/pull/10, 2026-09-16):
+     (https://github.com/Konstellation-Network/konstellation/pull/10, opened
+     2026-09-16, **merged `9ad388b` 2026-09-17** after three human review
+     rounds and three automated passes — 15 findings, all closed with tests):
      `x/compliance` — allow + block lists, `MsgScheduleUpdate` behind the
      timelock, `MsgEmergencyFreeze` with auto-expiry, `MsgGovUpdate` override,
      ante enforcement across EVM and Cosmos plus a synchronous mempool
@@ -259,6 +281,21 @@ itself waits until validators exist, per §17's own text.
      end. Still owed before mainnet: **legal review** (§10), the foundation
      multisig address in `networks/konstellation-1/genesis.json`, and (Phase 3)
      IBC middleware so an incoming transfer to a frozen address is gated too.
+     Follow-ups from the 2026-09-17 reviews, **both closed 2026-09-19** on
+     `phase2-loose-ends`: (a) the by-hand EVM checks (transfer, deploy,
+     frozen sender at CheckTx + DeliverTx + Cosmos, frozen recipient,
+     relayed 7702 authorization) are `tests/integration/compliance_test.go`,
+     real signed txs through the real app — the test that would have caught
+     `f63c1b7`. (b) a freeze on an EOA already carrying an EIP-7702
+     delegation now clears it (`keeper/delegation.go`; decision recorded in
+     `ENGINEERING.md §10`). `TestFreezeResetsExistingDelegation` first
+     drains the delegated EOA through an ERC-4337 EntryPoint with a UserOp
+     the owner signed off-chain and a clean relayer — proving the hole —
+     then freezes and shows the same UserOp moves nothing, the
+     `compliance_delegation_reset` event fires, and one re-delegation after
+     lifting brings the wallet back already initialised (storage intact).
+     Verified to fail without the fix (2026-09-19: "frozen delegated EOA was
+     drained").
    - **D12 (vesting):** `contracts/src/vesting/` — Solidity vesting
      contracts. Fully unblocked now; not started.
    - **D9 (audit):** start scoping calls with Informal Systems now (lead
@@ -274,8 +311,14 @@ itself waits until validators exist, per §17's own text.
 6. Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware
    (§13). Both are `app.go` wiring, no fork. IBC rate limiting is also a
    prerequisite for D8's post-launch bridge sequencing.
-7. `tests/e2e` (interchaintest): first test should be the one upstream lacks —
-   an EVM transfer *to a module account* must be rejected (§4.1.1 coverage gap).
+7. ~~`tests/e2e` first test: EVM transfer *to a module account* rejected (§4.1.1)~~
+   done 2026-09-19 as `tests/integration/module_account_test.go` — in-process,
+   not interchaintest: it exercises exactly the x/vm guard §4.1.1 traced
+   (`SetBalanceWithLocked` → "is not allowed to receive funds") against four
+   module accounts. `tests/e2e` (interchaintest, multi-node) is still empty:
+   it needs Docker and a `Dockerfile`, neither of which this machine or the
+   repo has yet; its first job is now the Phase 5 drills (upgrade, chaos,
+   halt), not single-node semantics.
 8. `networks/testnet-1/`: tooling and docs are in `networks` PR #1 (see §1). The
    genesis itself: once #5–#7 are on `konstellation` `main`, D6 is built and the
    §2a restart panic is fixed, tag a release, add it to `networks/RELEASES.md`,
@@ -308,7 +351,8 @@ itself waits until validators exist, per §17's own text.
 - `~/src/evm-reference`: local clone of cosmos/evm at **v0.7.3**. Never pushed.
   Use it to diff upstream releases (`ENGINEERING.md §16`).
 - `konstellation`: `make build` (sha256 printed), `make verify-deps`,
-  `make vulncheck` / `vulncheck-binary`, `make test-unit`, `golangci-lint run`,
+  `make vulncheck` / `vulncheck-binary`, `make test-unit`, `make test-integration`
+  (in-process app tests, `-tags test`; ~2 s), `golangci-lint run`,
   `./local_node.sh -y` (dev chain, JSON-RPC :8545, metrics :26660, chain id 56670).
 - Dev mnemonics in `local_node.sh` are public; `dev0` = `0xC6Fe5D33615a1C52c08018c47E8Bc53646A0E101`.
 

@@ -193,8 +193,10 @@ through `SetBalanceWithLocked`. No duplicated or unguarded path exists.
   v0.7.3 tag in the reference clone.
 - Upstream `go test ./x/vm/statedb/` at v0.7.3: pass (incl. `TestCommitAtomicity`).
 - **Coverage gap:** upstream has no direct unit test for the module-account guard
-  in `SetBalanceWithLocked`. Add an e2e test in `konstellation/tests/e2e` that
-  sends an EVM transfer to a module account address and asserts rejection.
+  in `SetBalanceWithLocked`. Covered since 2026-09-19 by
+  `konstellation/tests/integration` (`TestEVMTransferToModuleAccountRejected`): a
+  signed EVM transfer to each of four module accounts through the real app, asserting
+  the guard's error and that nothing but gas moved.
 
 **`govulncheck ./...` (2026-09-13): 11 findings reachable from our code.** Two
 are Cosmos-specific and are **false positives** in the Go vulnerability DB:
@@ -349,7 +351,9 @@ konstellation/
 │       ├── precompile/        # read-only ICompliance at 0x…0900
 │       └── types/             # generated from proto/konstellation/compliance/v1
 ├── proto/                     # buf; `make proto-gen` (gocosmos + grpc-gateway)
-├── tests/e2e/                 # interchaintest
+├── tests/
+│   ├── integration/           # the real app in-process, driven with signed txs (`make test-integration`, `-tags test`)
+│   └── e2e/                   # interchaintest (multi-node, Docker) — not yet populated
 ├── .github/workflows/
 │   ├── ci.yml                 # build, unit, lint
 │   └── vuln.yml               # govulncheck: PR + nightly cron
@@ -694,7 +698,17 @@ qualification. Enforcement lives at one of three levels:
 | **Token contract** (ERC-3643 / T-REX) | that token only | pure Solidity |
 
 **Freezing** is straightforward — the ante decorator rejects transactions touching
-listed addresses. **Reversal** options, best to worst:
+listed addresses. One EVM-specific wrinkle, decided 2026-09-19: **a block-list add
+also clears any EIP-7702 delegation on the address** (`x/compliance/keeper/delegation.go`,
+on the emergency, scheduled and governance paths alike). The ante cannot see internal
+calls, so an EOA delegated to a smart-account wallet *before* the freeze would still
+run that wallet's code when an EntryPoint or any forwarder called it — a clean relayer
+could drain it with a UserOp the frozen key signed off-chain (reproduced live on
+`cb6ace1`, and in `tests/integration`). Leaving that to governance was rejected: the
+emergency path exists because three days is too long. Only the 23-byte `0xef0100‖addr`
+form is touched — never real contract bytecode, so freezing a token contract does not
+brick its holders — and only the code hash goes, not storage, so a lifted account is
+restored by one new authorization. **Reversal** options, best to worst:
 
 1. **Mint/burn controlled assets.** Burn at the thief, mint to the victim. What
    regulated stablecoin issuers do. Clean and auditable.
