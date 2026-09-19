@@ -65,6 +65,13 @@ Konstellation org controls. The only permitted `replace` lines are the ones
 copied verbatim from the upstream `cosmos/evm` `go.mod` (currently a go-ethereum
 fork pin).
 
+`tests/e2e/go.mod` is a separate module (added 2026-09-19) so interchaintest's
+dependency tree stays out of the binary's. It carries interchaintest's own
+third-party pins (`gogo/protobuf`, `go-schnorrkel`, `btcec`, `goleveldb`,
+`go-subkey`), copied verbatim from its `go.mod`; none is org-controlled and none
+touches the four protected modules. Nothing in it links into `konstellationd`;
+`make verify-deps` covers the binary's `go.mod`, which is the one that matters.
+
 Verification:
 
 ```bash
@@ -196,7 +203,12 @@ through `SetBalanceWithLocked`. No duplicated or unguarded path exists.
   in `SetBalanceWithLocked`. Covered since 2026-09-19 by
   `konstellation/tests/integration` (`TestEVMTransferToModuleAccountRejected`): a
   signed EVM transfer to each of four module accounts through the real app, asserting
-  the guard's error and that nothing but gas moved.
+  the guard's error and that nothing but gas moved; and by the same-named test in
+  `tests/e2e`, through `eth_sendRawTransaction` against a real node. The latter also
+  records what a user sees: the failed SDK tx is **not indexed as an Ethereum tx**, so
+  `eth_getTransactionReceipt` says "not found" and the reason is only in CometBFT's
+  `tx_search`; `eth_call`/`eth_estimateGas` do not see the guard at all (it is in the
+  stateDB commit, which a simulation never reaches).
 
 **`govulncheck ./...` (2026-09-13): 11 findings reachable from our code.** Two
 are Cosmos-specific and are **false positives** in the Go vulnerability DB:
@@ -353,7 +365,8 @@ konstellation/
 ├── proto/                     # buf; `make proto-gen` (gocosmos + grpc-gateway)
 ├── tests/
 │   ├── integration/           # the real app in-process, driven with signed txs (`make test-integration`, `-tags test`)
-│   └── e2e/                   # interchaintest (multi-node, Docker) — not yet populated
+│   └── e2e/                   # real nodes under interchaintest, own go.mod (`make docker-build && make test-e2e`)
+├── Dockerfile                 # konstellation:e2e — for tests/e2e and local multi-node runs, NOT the release artifact (§2.6)
 ├── .github/workflows/
 │   ├── ci.yml                 # build, unit, lint
 │   └── vuln.yml               # govulncheck: PR + nightly cron
@@ -875,6 +888,8 @@ govulncheck ./...
 # --- local dev chain ---
 cd ~/src/konstellation
 make test-unit
+make test-integration              # real app in-process, -tags test
+make docker-build && make test-e2e # real nodes under interchaintest (Docker)
 make test-solidity
 ./local_node.sh
 

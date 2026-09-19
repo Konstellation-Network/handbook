@@ -4,7 +4,10 @@
 (konstellation):** a block-list add now clears an existing EIP-7702 delegation (the
 drain path the PR #10 reviews left open, reproduced and closed in the same test); the
 by-hand EVM checks from PR #10 are automated in a new in-process harness
-(`tests/integration`, `make test-integration`); the §4.1.1 module-account test exists.
+(`tests/integration`, `make test-integration`); `tests/e2e` is live — a `Dockerfile`
+and four interchaintest tests against real nodes (§2a restart regression, freeze via
+CLI → refused at `eth_sendRawTransaction`, §4.1.1 module-account transfer, chain
+identity); the §4.1.1 module-account test exists at both levels.
 `x/compliance` (PR #10) merged `9ad388b` 2026-09-17 — the last Phase 2 item. Chain-wide
 block-list enforcement (EVM + Cosmos, with an immediate "address is frozen" at every
 submission path), timelocked authority with emergency freeze/expiry, governance
@@ -228,6 +231,20 @@ and produces a correct node. Specifically, in `konstellation`:
   CI runs it). Not optional: cosmos/evm's EVM chain config is a
   once-per-process global unless that tag is on, and every test builds its
   own app. `go test ./...` skips the directory silently.
+- `tests/e2e` is its own Go module (interchaintest v10.0.1 is on SDK 0.53
+  and carries third-party `replace` pins; `ENGINEERING.md §2.2` records why
+  that is fine). `go test ./...` from the repo root does not enter it;
+  `make test-e2e` does. It needs Docker running and `make docker-build`
+  first; CI has a separate `e2e` job that does both.
+- **A failed EVM tx is invisible to `eth_*`.** When an EVM tx fails as an
+  SDK tx (code ≠ 0 — e.g. the §4.1.1 module-account guard, which fires at
+  stateDB commit, after the ante), cosmos/evm does not index it as an
+  Ethereum tx: `eth_getTransactionReceipt` / `eth_getTransactionByHash`
+  return "not found", gas is charged, and the reason is only in CometBFT's
+  `tx_search` (`ethereum_tx.ethereumTxHash='0x…'`). `eth_estimateGas` does
+  not catch it either (simulations never commit). Pinned by
+  `tests/e2e/module_account_test.go`; worth a line in `docs/` troubleshooting
+  when that page is written.
 - `SenderCreatorV07`/`V08` look redundant next to the EntryPoints but are not:
   each EntryPoint's bytecode hard-references its SenderCreator as an immutable
   and a preinstall never runs the constructor that would have deployed it.
@@ -312,13 +329,18 @@ itself waits until validators exist, per §17's own text.
    (§13). Both are `app.go` wiring, no fork. IBC rate limiting is also a
    prerequisite for D8's post-launch bridge sequencing.
 7. ~~`tests/e2e` first test: EVM transfer *to a module account* rejected (§4.1.1)~~
-   done 2026-09-19 as `tests/integration/module_account_test.go` — in-process,
-   not interchaintest: it exercises exactly the x/vm guard §4.1.1 traced
-   (`SetBalanceWithLocked` → "is not allowed to receive funds") against four
-   module accounts. `tests/e2e` (interchaintest, multi-node) is still empty:
-   it needs Docker and a `Dockerfile`, neither of which this machine or the
-   repo has yet; its first job is now the Phase 5 drills (upgrade, chaos,
-   halt), not single-node semantics.
+   done 2026-09-19, twice: `tests/integration/module_account_test.go`
+   (in-process, the x/vm guard itself, four module accounts) and
+   `tests/e2e/module_account_test.go` (a real node, through
+   `eth_sendRawTransaction`, plus what the RPC shows — see §3). `tests/e2e`
+   now exists: `Dockerfile` (`konstellation:e2e`, not a release artifact),
+   interchaintest v10.0.1 in its own module, four tests — the §2a restart
+   regression (PR #8) as a real process restart, an emergency freeze issued
+   through the CLI and refused at the JSON-RPC (`app/mempool.go`'s wrapper
+   path, unreachable from ABCI-level tests), the module-account transfer,
+   and chain identity (EIP-155 id from `init`). ~40 s per test, one
+   single-validator chain each. Next for this directory: the Phase 5
+   drills (upgrade, chaos, halt) once there is a release to upgrade from.
 8. `networks/testnet-1/`: tooling and docs are in `networks` PR #1 (see §1). The
    genesis itself: once #5–#7 are on `konstellation` `main`, D6 is built and the
    §2a restart panic is fixed, tag a release, add it to `networks/RELEASES.md`,
@@ -352,7 +374,9 @@ itself waits until validators exist, per §17's own text.
   Use it to diff upstream releases (`ENGINEERING.md §16`).
 - `konstellation`: `make build` (sha256 printed), `make verify-deps`,
   `make vulncheck` / `vulncheck-binary`, `make test-unit`, `make test-integration`
-  (in-process app tests, `-tags test`; ~2 s), `golangci-lint run`,
+  (in-process app tests, `-tags test`; ~2 s), `make docker-build` + `make test-e2e`
+  (interchaintest against real nodes; ~3 min for four tests; Docker Desktop must be
+  running — `open -a Docker`), `make lint` / `lint-e2e`,
   `./local_node.sh -y` (dev chain, JSON-RPC :8545, metrics :26660, chain id 56670).
 - Dev mnemonics in `local_node.sh` are public; `dev0` = `0xC6Fe5D33615a1C52c08018c47E8Bc53646A0E101`.
 
