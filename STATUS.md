@@ -7,7 +7,9 @@ by-hand EVM checks from PR #10 are automated in a new in-process harness
 (`tests/integration`, `make test-integration`); `tests/e2e` is live — a `Dockerfile`
 and four interchaintest tests against real nodes (§2a restart regression, freeze via
 CLI → refused at `eth_sendRawTransaction`, §4.1.1 module-account transfer, chain
-identity); the §4.1.1 module-account test exists at both levels.
+identity); the §4.1.1 module-account test exists at both levels, and the e2e one
+surfaced that such a transfer vanished from `eth_*` after charging gas — now refused at
+submission with the reason (`app/blocked_recipient.go`, see §3).
 `x/compliance` (PR #10) merged `9ad388b` 2026-09-17 — the last Phase 2 item. Chain-wide
 block-list enforcement (EVM + Cosmos, with an immediate "address is frozen" at every
 submission path), timelocked authority with emergency freeze/expiry, governance
@@ -236,15 +238,23 @@ and produces a correct node. Specifically, in `konstellation`:
   that is fine). `go test ./...` from the repo root does not enter it;
   `make test-e2e` does. It needs Docker running and `make docker-build`
   first; CI has a separate `e2e` job that does both.
-- **A failed EVM tx is invisible to `eth_*`.** When an EVM tx fails as an
-  SDK tx (code ≠ 0 — e.g. the §4.1.1 module-account guard, which fires at
-  stateDB commit, after the ante), cosmos/evm does not index it as an
-  Ethereum tx: `eth_getTransactionReceipt` / `eth_getTransactionByHash`
-  return "not found", gas is charged, and the reason is only in CometBFT's
-  `tx_search` (`ethereum_tx.ethereumTxHash='0x…'`). `eth_estimateGas` does
-  not catch it either (simulations never commit). Pinned by
-  `tests/e2e/module_account_test.go`; worth a line in `docs/` troubleshooting
-  when that page is written.
+- **An EVM tx that fails as an SDK tx is invisible to `eth_*`.** When an
+  EVM tx passes the ante but fails at the SDK level in the block (code ≠ 0),
+  cosmos/evm does not index it as an Ethereum tx (`indexer/kv_indexer.go`,
+  `TxSucessOrExpectedFailure`): `eth_getTransactionReceipt` /
+  `eth_getTransactionByHash` return "not found", gas is charged, and the
+  reason is only in CometBFT's `tx_search`
+  (`ethereum_tx.ethereumTxHash='0x…'`). Changing that means forking the
+  indexer and RPC backend (§2.1), so instead the one case a user can hit by
+  hand — a value transfer straight to a module account or precompile, the
+  §4.1.1 guard — is now refused at the ante handler and the mempool
+  pre-check (`app/blocked_recipient.go`, 2026-09-19): `eth_sendRawTransaction`
+  answers "… is not allowed to receive funds: it is the "fee_collector"
+  module account", nothing is charged, the nonce is not consumed. Verified in
+  `tests/integration` and against a real node in `tests/e2e`. Residual: value
+  sent to a blocked address by an *internal* call (contract → module account)
+  still fails at stateDB commit, invisibly. Worth a line in `docs/`
+  troubleshooting when that page is written.
 - `SenderCreatorV07`/`V08` look redundant next to the EntryPoints but are not:
   each EntryPoint's bytecode hard-references its SenderCreator as an immutable
   and a preinstall never runs the constructor that would have deployed it.

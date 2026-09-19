@@ -203,12 +203,18 @@ through `SetBalanceWithLocked`. No duplicated or unguarded path exists.
   in `SetBalanceWithLocked`. Covered since 2026-09-19 by
   `konstellation/tests/integration` (`TestEVMTransferToModuleAccountRejected`): a
   signed EVM transfer to each of four module accounts through the real app, asserting
-  the guard's error and that nothing but gas moved; and by the same-named test in
-  `tests/e2e`, through `eth_sendRawTransaction` against a real node. The latter also
-  records what a user sees: the failed SDK tx is **not indexed as an Ethereum tx**, so
-  `eth_getTransactionReceipt` says "not found" and the reason is only in CometBFT's
-  `tx_search`; `eth_call`/`eth_estimateGas` do not see the guard at all (it is in the
-  stateDB commit, which a simulation never reaches).
+  the guard's error and that nothing moved; and by the same-named test in
+  `tests/e2e`, through `eth_sendRawTransaction` against a real node. The e2e test
+  first showed what a user saw when the guard was the *only* check: the failed SDK tx
+  is **not indexed as an Ethereum tx**, so `eth_getTransactionReceipt` said "not
+  found", gas was charged, and the reason was only in CometBFT's `tx_search`
+  (`eth_call`/`eth_estimateGas` never reach the stateDB commit, so they did not warn
+  either). Fixed 2026-09-19 in `app/blocked_recipient.go`: the same condition
+  (value > 0 to a module account or bank-blocked address) is checked in the ante
+  handler and the mempool pre-check, so `eth_sendRawTransaction` refuses it with the
+  reason and nothing is charged. The x/vm guard is untouched and remains the last
+  line; value reaching a blocked address through an *internal* call still fails
+  there, invisibly to `eth_*`.
 
 **`govulncheck ./...` (2026-09-13): 11 findings reachable from our code.** Two
 are Cosmos-specific and are **false positives** in the Go vulnerability DB:
