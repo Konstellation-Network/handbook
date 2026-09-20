@@ -362,6 +362,15 @@ itself waits until validators exist, per §17's own text.
    `x/ratelimit` keeper + mock-middleware units, `x/compliance/ibc` units,
    `tests/integration/circuit_test.go` (trip/reset, authz-nested, EVM pause),
    `tests/e2e/ibc_test.go` (two chains + Hermes, gov proposal, real transfers).
+   PR #12 review fixes (2026-09-20): window reset/update carry the channel value
+   forward on zero supply (was a deadlock until gov removed the limit);
+   `GetRateLimit` propagates store errors instead of failing open; the circuit
+   ante/mempool check walks into authz `MsgExec` (`app/circuit.go`). Same day:
+   `Quota` gained optional `max_absolute_send/recv` (the lower of it and the
+   percentage applies — needed for native-denom paths, where "1 %" is 1 % of
+   the chain); `app/upstream_pin_test.go` now also pins cosmos-sdk so a bump
+   forces the `contrib/x/circuit` re-check; setting quotas before a channel
+   carries value is a §15 phase 9 gate.
    **Owed:** the 3-of-5 operations multisig address for `circuit.account_permissions`
    in each network's genesis (a decision, not code); per-channel quotas by gov before
    any mainnet channel opens (D8).
