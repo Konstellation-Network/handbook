@@ -923,10 +923,12 @@ git fetch --tags
 git diff v0.7.3..v0.7.4 -- x/vm/ precompiles/
 git log --oneline v0.7.3..v0.7.4
 
-# --- release build ---
+# --- release build: never local (§2.6); a signed tag on main triggers release.yml ---
 cd ~/src/konstellation
-make build
-sha256sum build/konstellationd   # record in networks/<net>/upgrades/
+git checkout main && git pull --ff-only
+git tag -s v0.1.0 -m "v0.1.0: testnet-1 genesis binary" && git push origin v0.1.0
+# then: gh release download v0.1.0; sha256sum -c SHA256SUMS; record in networks/RELEASES.md
+# full checklist: konstellation/RELEASING.md
 
 # --- fleet upgrade, testnet only ---
 cd ~/src/infra
