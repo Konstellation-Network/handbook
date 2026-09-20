@@ -1,12 +1,15 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-19 — **Phase 3 (safety rails, §13) built on branch `phase3-safety-rails`:**
-`x/circuit` (SDK contrib, D14) wired into the router, ante chain and mempool pre-check;
-`x/ratelimit` (own module, D15 — nothing exists for ibc-go v11) as the outermost transfer
-middleware, v1 and v2; `x/compliance/ibc` gating incoming ICS-20 packets by the block list.
-Verified over a real Hermes-relayed channel between two nodes (`tests/e2e/ibc_test.go`):
-gov adds a 1 % limit, over-limit refused, at-limit lands, frozen receiver error-acked and
-refunded. The 3-of-5 multisig is a genesis entry per network, not code — still to be chosen.
+**Updated:** 2026-09-20 — **Phase 3 (safety rails, §13) merged: konstellation PR #12
+(`a9051f6`).** `x/circuit` (SDK contrib, D14) wired into the router, ante chain, mempool
+pre-check and the tx-path precompiles, authz-nested messages included, its own and gov's
+messages untrippable; `x/ratelimit` (own module, D15 — nothing exists for ibc-go v11) as
+the outermost transfer middleware, v1 and v2, percentage-of-supply quotas with optional
+absolute caps, fails closed; `x/compliance/ibc` gating incoming ICS-20 packets by the
+block list. Verified over a real Hermes-relayed channel between two nodes
+(`tests/e2e/ibc_test.go`). Three automated review rounds, nine findings, all closed with
+tests (see §5 item 6). The 3-of-5 multisig is a genesis entry per network, not code —
+still to be chosen. **Next: cut a release and build testnet-1 genesis (§5 item 8).**
 **Phase 2 complete: konstellation PR #11 (`40bafaa`, 2026-09-19):** a block-list add
 now clears an existing EIP-7702 delegation (the
 drain path the PR #10 reviews left open, reproduced and closed in the same test); the
@@ -38,7 +41,7 @@ Launch sequence (`ENGINEERING.md §15`):
 | 0 — scaffold `konstellation`, pin cosmos/evm, zero local replaces | **done** — PR #1, merged 2026-09-14 |
 | 1 — govulncheck clean, CI green, dependency graph verified | **done** — PR #1, seven review passes, 29 findings fixed, last pass zero medium+ |
 | 2 — customise: genesis params, preinstalls, custom modules | **done** — genesis params (#3), preinstalls (#4), D4 issuance + D5 burn (#5), econ params (#6), network profiles (#7), `x/compliance` (D6, #10 merged 2026-09-17), loose ends + both test harnesses (#11 merged `40bafaa` 2026-09-19) |
-| 3 — safety rails (§13) | **built, on `phase3-safety-rails`** — circuit breaker (D14) + IBC rate limiting (D15) + IBC receive gate; bridge caps n/a (no bridge, D8); halt drill is a Phase 5 output |
+| 3 — safety rails (§13) | **done** — PR #12 merged `a9051f6` 2026-09-20: circuit breaker (D14) + IBC rate limiting (D15) + IBC receive gate; bridge caps n/a (no bridge, D8); halt drill is a Phase 5 output |
 | 4+ | not started |
 
 `konstellation` PR #1 (https://github.com/Konstellation-Network/konstellation/pull/1)
@@ -355,7 +358,7 @@ itself waits until validators exist, per §17's own text.
      the bridge/value-ceiling sequencing (D8, recorded in `ENGINEERING.md §11`)
      both need writing into `whitepaper`, which is currently `init`-only.
 6. ~~Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware
-   (§13)~~ **built 2026-09-19** on `phase3-safety-rails`. Not "just wiring" in the
+   (§13)~~ **built 2026-09-19, merged 2026-09-20 as PR #12 (`a9051f6`)**. Not "just wiring" in the
    end: SDK 0.54 moved `x/circuit` to unmaintained `contrib/` (used anyway, D14), and
    no rate limiter exists for ibc-go v11, so `x/ratelimit` is ours (D15, ~800 lines +
    proto, in the audit scope). Also `x/compliance/ibc` (§18 IBC-to-frozen row). Tests:
