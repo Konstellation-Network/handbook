@@ -337,7 +337,7 @@ Everything else produces configuration, documentation, contracts or cloud resour
 |---|---|
 | Genesis preinstall bytecode == compiled artifact | test in `contracts` |
 | `networks/<net>/genesis.sha256` matches `genesis.json` | CI in `networks` |
-| Every release tag has a checksum recorded in `networks` | release checklist |
+| Every release tag has a checksum recorded in `networks` | `konstellation/RELEASING.md` |
 | `chain-config` addresses match `contracts` deployments | test in `chain-config` |
 | Explorer RPC target is an archive node, not pruned | `infra` terraform |
 
@@ -380,7 +380,9 @@ konstellation/
 ├── Dockerfile                 # konstellation:e2e — for tests/e2e and local multi-node runs, NOT the release artifact (§2.6)
 ├── .github/workflows/
 │   ├── ci.yml                 # build, unit, lint
-│   └── vuln.yml               # govulncheck: PR + nightly cron
+│   ├── vuln.yml               # govulncheck: PR + nightly cron
+│   └── release.yml            # signed tag → two independent builds, checksums must agree, provenance, GitHub Release (§2.6)
+├── RELEASING.md               # the release checklist: tag, verify, record in networks/RELEASES.md
 ├── go.mod                     # zero local replaces
 ├── go.sum
 ├── Makefile
@@ -396,8 +398,7 @@ konstellation/
 ├── x/
 │   └── compliance/            # D6 (mint needs no module: D4 is x/mint's MintFn)
 ├── .github/
-│   ├── CODEOWNERS             # app.go and x/ require a second reviewer
-│   └── workflows/release.yml  # reproducible build, checksums, signed tag
+│   └── CODEOWNERS             # app.go and x/ require a second reviewer
 ├── SECURITY.md
 └── audits/
     └── YYYY-MM-<firm>.pdf
