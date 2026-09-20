@@ -370,7 +370,10 @@ itself waits until validators exist, per §17's own text.
    percentage applies — needed for native-denom paths, where "1 %" is 1 % of
    the chain); `app/upstream_pin_test.go` now also pins cosmos-sdk so a bump
    forces the `contrib/x/circuit` re-check; setting quotas before a channel
-   carries value is a §15 phase 9 gate.
+   carries value is a §15 phase 9 gate — and is now possible for foreign
+   tokens: a fresh `ibc/…` voucher has no supply, so `max_absolute_recv` stands
+   alone until it does (third review round). REST `rate_limit/{channel}/{denom=**}`
+   so voucher denoms resolve.
    **Owed:** the 3-of-5 operations multisig address for `circuit.account_permissions`
    in each network's genesis (a decision, not code); per-channel quotas by gov before
    any mainnet channel opens (D8).
