@@ -451,6 +451,7 @@ contracts/
 │   ├── DeployWKASH.s.sol       # Create2Deployer + salt keccak256("konstellation-network/contracts:WKASH:v1")
 │   ├── DeployVesting.s.sol     # JSON config → CREATE2 wallets; predict() gives genesis allocation addresses
 │   ├── lib/Create2Deployer.sol
+│   ├── lib/InitCodePins.sol    # canonical creation-code hashes; every script refuses a drifted build
 │   └── config/vesting.example.json
 ├── CODEOWNERS                  # separate rows for src/vesting/ and preinstalls/
 ├── preinstalls/
@@ -967,7 +968,7 @@ upstream) and EIP-7702 (a version setting).
 | 6 | Admit the first independent operators onto testnet-1 through the D16 procedure. They find the gaps in `run-a-validator.md` that in-house engineers cannot see; fix the docs. |
 | 7 | Bug bounty live **before** mainnet |
 | 8 | Genesis ceremony: gentx collection, published genesis hash, independent verification by every operator |
-| 9 | **konstellation-1 with a value ceiling** (D8). Soak a month. Lift the cap after the audit and a clean run. **No IBC channel carries value until governance has set an `x/ratelimit` quota on it** — percentage *and* an absolute cap for native-denom paths, and for a foreign token's `ibc/…` path the absolute receive cap is what makes the limit settable *before* the first packet (the voucher has no supply yet; §13.2, §18); the quotas are a gate, not a follow-up. |
+| 9 | **konstellation-1 with a value ceiling** (D8). Soak a month. Lift the cap after the audit and a clean run. **By procedure, no IBC channel carries value until governance has set an `x/ratelimit` quota on it** — the module passes an unquoted path untouched and channel handshakes are permissionless, so this is a gate operators enforce, not a property the chain enforces; the hard stop is tripping `MsgTransfer` in `x/circuit`, and whether that ships tripped in mainnet genesis is open (STATUS §5a P18) — percentage *and* an absolute cap for native-denom paths, and for a foreign token's `ibc/…` path the absolute receive cap is what makes the limit settable *before* the first packet (the voucher has no supply yet; §13.2, §18); the quotas are a gate, not a follow-up. |
 | 10 | Enable BlockSTM by governance upgrade after the shadow node shows a clean month |
 
 ---

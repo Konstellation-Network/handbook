@@ -140,6 +140,16 @@ shipped role tasks and five documented mutations each fail it; a data-rebuild gu
 refuses to format a validator's data device while a consensus key exists (the §2.7
 residual: re-running `site.yml` after a wiped Local SSD); and the honest test caught
 Prometheus about to listen on CometBFT's 26660 (`prometheus_web_port`).
+**Adversarial round (`3dfae83`):** the coordinated-upgrade rollback section that would
+have tombstoned the whole set is rewritten (`--unsafe-skip-upgrades`, never a `data/`
+restore; state-file handling explained); tenderduty digest-pinned and sandboxed;
+downloads into a root-owned cache with a second checksum before root extracts
+(TOCTOU); the emergency patch survives `site.yml`; WireGuard peer pubkeys validated
+(fact injection → root); validators accept p2p only from their own cloud's sentry
+/32s, sentries cross-peered; GCP VMs on a scopeless dedicated SA, shielded, project
+SSH keys blocked; jailed-validator and cosigner-down alerts; admission tx carries fee
++ timeout-height; 7-mutation render test. P16/P21/P22/P23 remain decisions with
+honest interim text.
 Still open: state bucket, topology
 defaults (§5a P5, P15), version pins, on-call rota, and tenderduty is **archived
 upstream (2025-01-02)** — evaluate a maintained fork before mainnet.
@@ -183,6 +193,16 @@ properties × 1000 runs. **ERC-20 `release(token)` is disabled on purpose** (see
 OZ's stock path would let a beneficiary withdraw the same KASH twice. Vesting is
 native-KASH only. `CODEOWNERS` added with separate rows for `src/vesting/` and
 `preinstalls/`. Defaults the agent picked that need confirming are in §5a.
+**Review rounds 2026-09-21:** first pass (`8ac5a7d`, 85 tests) — config validation,
+`check()` executes every init code, init-code pins, typed JSON parsing,
+`Ownable2Step`; adversarial pass (`09cc107`, 103 tests) — scripts refuse drifted
+builds (`script/lib/InitCodePins.sol`, any compiler override fails `check()`),
+duplicate JSON keys detected, funding compares `balance + released()` (dust cannot
+veto a mainnet deploy; `run()` idempotent; `fund()` no double-pay), semantic
+config checks (label charset, treasury ∉ wallets, stale TGE, §7 divisibility
+enforced), `.env` ignored and never read, SHA-pinned CI, a 4-invariant stateful
+fuzz. **Pre-publish procedure for any allocation list: `forge script
+script/DeployVesting.s.sol --sig "check()"` on the canonical build.**
 
 `docs` has a Docusaurus site scaffolded and pushed to `main` (`2f2e598`, 2026-09-14);
 CI (`npm ci && npm run build`, with `onBrokenLinks: 'throw'`) added 2026-09-15.
@@ -202,6 +222,13 @@ first tx with `cast`), `CODEOWNERS`. `rpc-endpoints.md` / `upgrades.md` stay
 stubbed until `networks/testnet-1` exists; every URL is a marked TBD.
 Hosting/domain for the site is still undecided (`docusaurus.config.js` `url` is a
 placeholder).
+**Review rounds 2026-09-21:** `bb94830` (D7/D16 admission flow, vesting/WKASH as
+built, real circuit-breaker strings, infra's unit) and adversarial `b62ed62`: freeze
+semantics stated honestly (stops signing and direct receipt; does not immobilise
+balance — P20), Horcrux steps that actually remove the key from the host, admission tx
+with fee + timeout, genesis by tag with a separately published hash, attestation
+pinned to repo + workflow, cosmovisor pinned, private-doc citations replaced by inline
+facts, WKASH marked provisional until on testnet-1.
 
 `networks` is scaffolded — **PR #1** (https://github.com/Konstellation-Network/networks/pull/1)
 **merged** into `main` as `c88fd34` on 2026-09-16 after a `/code-review` pass (8 findings,
@@ -229,6 +256,14 @@ the §2a restart panic; cutting one now would only be regenerated.
   at the end of the PDF; todo #4 (permissioned mechanism) is now answered by D16,
   the rest are §5a P2. `[legal review]`
   markers on the compliance section, token characterisation and disclaimers.
+  **Review rounds 2026-09-21:** `ae45b70` (18 wording findings) and adversarial
+  `375dd63` (29 pp, 20 todos): the false "single provider outage cannot halt the
+  chain" claim corrected (P16); all yield/return/market language neutralised or
+  `[legal review]`-marked; governance stated as the foundation over itself at launch;
+  freeze-voters residual (P17) and freeze-does-not-immobilise-balance (P20) stated
+  honestly; IBC quotas as procedure (P18); incident/audit claims corrected; provider
+  names removed; multisig-distinctness todo (P19); `releases/` guard fixed and run
+  on push; TeX image digest-pinned.
 - **`chain-config`** — `scaffold-package` (2 commits): TypeScript package
   `@konstellation-network/chain-config` (ESM + CJS + types, zero runtime deps):
   `konstellation` / `testnet` / `localnet` as viem-compatible `Chain` objects plus
@@ -245,7 +280,13 @@ the §2a restart panic; cutting one now would only be regenerated.
   precompile key to `werc20` — the two are different contracts; MetaMask Mobile now accepts
   the `wallet_addEthereumChain` params (empty `blockExplorerUrls` omitted); the §5.2
   invariant fails rather than skips on a broken sibling; CI checks out both `contracts`
-  and `konstellation`, so `CONTRACTS_READ_TOKEN` needs read access to **both** (P6).
+  and `konstellation`, so `CONTRACTS_READ_TOKEN` needs read access to **both** (P6). **Adversarial round (`1fcd9ac`, 52 tests):** CI is now **red**, not
+  yellow, when the invariant cannot run (fork PRs red by design); `dist/` is tested
+  against `src` on build and pack; every address has a literal expectation; parsers
+  strip comments and require exactly one match; inert `vesting` precompile removed
+  (P24 chain side still open); prototype-safe `getNetworkById`; gated OIDC publish
+  workflow (needs npm org + LICENSE + `private` off — P6/P25). CI checks out
+  `contracts` at `vesting-d12` until it merges — drop the `ref:` then.
 - **`faucet`** — `scaffold-faucet` (`172b026`): TypeScript/viem service (one
   runtime dep), `POST /request` accepts `0x` and `kons1…` (in-house bech32),
   per-address + per-IP cooldown behind a store interface (memory default, Redis
@@ -269,7 +310,12 @@ the §2a restart panic; cutting one now would only be regenerated.
   introduced a lockout (a node-answered `nonce too low` kept the cooldown with no
   payout) — now an in-request resync + retry, 3 s hash-lookup polling on transport
   loss, origin check works behind a Host-rewriting proxy (`PUBLIC_ORIGIN`), Redis
-  client behind a Docker build-arg. Two instances sharing one key: 8/8 confirmed.
+  client behind a Docker build-arg. Two instances sharing one key: 8/8 confirmed. **Adversarial
+  round (`008208b`, 101 tests):** payouts signed at exactly 21 000 gas and recipients
+  with code (contracts, 7702 delegations) refused before any claim; forwarded headers
+  honoured only from peers in a required `TRUSTED_PROXY_CIDRS`; compose default
+  `TRUST_PROXY=false`; startup refuses captcha-off in production unless
+  `ALLOW_NO_CAPTCHA=true`; lockfile scanned.
 - **`explorer`** — `scaffold-blockscout` (2 commits): one `docker-compose.yml`
   for all networks selected by `--env-file` (`.env.local` concrete; testnet-1 /
   konstellation-1 all `TODO-*`, CI enforces they stay placeholders); every image
@@ -318,6 +364,14 @@ the §2a restart panic; cutting one now would only be regenerated.
   tx not found` ~17×/12 min because `newHeads` fires before the node's EVM tx index
   commits; catchup recovers — cosmos/evm indexer timing, worth a §2a note if it ever
   matters beyond log noise.
+  **Adversarial round (`291f9f3`, CI green):** XFF honoured only from
+  `TRUSTED_INGRESS_CIDR` at our nginx (rate-limit spoofing closed; deploy-time warning
+  when bound off loopback without it); oracle window 2 400 blocks (~40 min poison vs
+  half a day); redis `requirepass` and both databases + redis on an `internal` `data`
+  network; CPU/memory/pid limits on every service; verifier on its own network with the
+  backend only; `INDEXER_TOKEN_INSTANCE_HOST_FILTERING_ENABLED=true` pinned with CIDR
+  denies (SSRF probes → `blacklist`); `local-s3` profile refused for real networks;
+  preflight proves tracing with `debug_traceCall`.
 
 ## 2. Decisions made (all recorded in ENGINEERING.md; every numbered decision D1–D13 is now resolved)
 
@@ -665,11 +719,13 @@ the rest wait. **Network column:** which network the decision actually bites on
 | P8 | `docs` hosting/domain | `docs.konstellation.network` placeholder | both |
 | P9 | tenderduty (paging) is archived upstream — pick a maintained fork | tenderduty | mainnet (fine for testnet) |
 | P11 | NFT media storage: an S3-compatible bucket (R2/S3) with TLS + anonymous read per network, keys into `explorer/.env.<net>` `NFT_MEDIA_S3_*`; a pinning/paid IPFS gateway (ipfs.io rate-limits) | local MinIO only | testnet-1 first |
+| **P27** | `konstellation` JSON-RPC WebSocket: with `ws-origins = ["127.0.0.1", "localhost"]` an upgrade carrying `Origin: http://localhost` or `http://127.0.0.1` gets **403** while a request with no `Origin` passes (explorer review, dev node). Either the running node's allowed-origins slice is not what app.toml says (flag/TOML-array parsing) or `checkOrigin` compares differently; browser dapps using `eth_subscribe` over WS would be refused. Reproduce and fix or document. | open | both |
+| **P26** | `konstellation/RELEASING.md` and the release-notes text in `release.yml` verify provenance with `gh attestation verify --owner Konstellation-Network`, which accepts a build attested from **any** org repo. Change to `--repo Konstellation-Network/konstellation --signer-workflow Konstellation-Network/konstellation/.github/workflows/release.yml` (docs already say so). Small; fold into the release-workflow PR. | `--owner` | both |
 | **P24** | **Genesis marks the `vesting` precompile (`0x…0803`) active but cosmos/evm v0.7.3 ships no implementation** — every call/tx to it fails with `precompiled contract not stored in memory` (adversarial chain-config review 2026-09-21). Drop it from `ActiveStaticPrecompiles` in `konstellation/app/genesis.go` (and from chain-config/docs), or document it as inert. | listed active | both |
 | **P25** | **Register EIP-155 ids 5667 / 56671 at `ethereum-lists/chains` now** (D1 said "before testnet"; still absent 2026-09-21 — wallets warn, and nobody else must take them) and **claim the npm org `@konstellation-network`** before any repo goes public (`@konstellation` already belongs to a stranger; a squat at the exact install name is the risk). Ties to P6. | unregistered / unclaimed | both |
-| **P21** | **Cosigner admin domains (adversarial infra review 2026-09-21).** One `deploy` SSH key with NOPASSWD root on every host incl. all three Horcrux cosigners — one leaked key = three shards = the consensus key of all ten validators. Also the default `cosigner_placement` puts two shards in one hcloud account (one API token → rescue-boot two servers → threshold). Decide: separate keys/operators per cosigner, hardware-backed, sudo restricted; one shard per provider (needs a third provider, ties to P16). **Mainnet-blocking.** | one key, 2 shards on Hetzner | mainnet (testnet colocated) |
-| **P22** | **Cosigner connectivity in `dedicated` mode**: cosigners reach each other through the bastion WireGuard tunnel, so tunnel down → the far-cloud cosigner is partitioned → 5 of 10 validators stop signing → halt. Cosigners need their own peer-pinned mesh over public IPs (or redundant tunnels). README and `CloudUnreachable` currently claim the opposite. | tunnel | mainnet |
-| **P23** | **Sentry topology**: one sentry per validator and `persistent_peers` = own sentry; four DoS'd sentry IPs halt the chain. Each validator should peer with ≥ 2 sentries and sentries cross-peer. Also validators admit p2p from the whole /24 (incl. the internet-facing RPC node) — narrow to own sentries. | 1:1 | both |
+| **P21** (interim in infra `3dfae83`) | **Cosigner admin domains (adversarial infra review 2026-09-21).** One `deploy` SSH key with NOPASSWD root on every host incl. all three Horcrux cosigners — one leaked key = three shards = the consensus key of all ten validators. Also the default `cosigner_placement` puts two shards in one hcloud account (one API token → rescue-boot two servers → threshold). Decide: separate keys/operators per cosigner, hardware-backed, sudo restricted; one shard per provider (needs a third provider, ties to P16). **Mainnet-blocking.** | one key, 2 shards on Hetzner | mainnet (testnet colocated) |
+| **P22** (interim in infra `3dfae83`) | **Cosigner connectivity in `dedicated` mode**: cosigners reach each other through the bastion WireGuard tunnel, so tunnel down → the far-cloud cosigner is partitioned → 5 of 10 validators stop signing → halt. Cosigners need their own peer-pinned mesh over public IPs (or redundant tunnels). README and `CloudUnreachable` currently claim the opposite. | tunnel | mainnet |
+| **P23** (interim in infra `3dfae83`) | **Sentry topology**: one sentry per validator and `persistent_peers` = own sentry; four DoS'd sentry IPs halt the chain. Each validator should peer with ≥ 2 sentries and sentries cross-peer. Also validators admit p2p from the whole /24 (incl. the internet-facing RPC node) — narrow to own sentries. | 1:1 | both |
 | **P20** | **A compliance freeze does not immobilise bank balance (chain bug, adversarial docs review 2026-09-21).** Reproduced on the dev chain: an EOA approves a spender on the werc20 precompile (`0xD4949664…`), is emergency-frozen (`isFrozen` true, its own sends refused), then `transferFrom(frozen, spender)` **succeeds** and `transfer(to = frozen)` succeeds. The ante checks signers and the tx `to` (the precompile); the precompile moves bank balance directly and `x/compliance` installs no bank `SendRestriction`. Any pre-freeze ERC-20/contract allowance drains a frozen account; any contract call funds it. Fix in `konstellation`: a bank send restriction on frozen `from`/`to` (covers werc20, IBC, everything), and/or a compliance wrapper on the werc20/bank precompiles like `app/circuit_precompiles.go`; then re-state the semantics in docs/whitepaper honestly ("a freeze stops signing and being the direct recipient"). Audit scope. | open | both |
 | **P16** | **Liveness under provider loss (adversarial whitepaper review, 2026-09-21).** 5 Hetzner + 5 GCP at equal stake: losing either provider = 50 % of voting power → CometBFT halts (>⅓ offline). All five GCP validators sit in **one region, `us-central1`** (`infra/terraform/envs/testnet-1/variables.tf`), so one regional outage halts the chain; the §15 chaos test (kill 40 %) is past the halt threshold by construction. The split prevents forging/censorship, not halts. Decide: a third provider, unequal weighting, or accept halt-on-provider-loss (and say so). At minimum spread the GCP five across regions. | as built | both |
 | **P17** | **`x/compliance` can freeze governance out (chain bug class).** Protected-from-freeze = module accounts, gov, the authority (`app.go:1132-1144`); validator operator accounts, the ops 3-of-5 and the treasury multisig are freezable, and the ante refuses any tx from a frozen signer incl. `MsgVote`/`MsgDeposit`. A compromised authority freezes the ten operators + ops multisig, schedules the permanent adds → 100 % of bonded stake cannot vote, quorum unreachable forever, breaker untrippable. Fix in `konstellation`: exempt `x/gov` messages from the freeze check and/or add bonded operators + circuit super-admins to the protected set; add to the audit scope. | open | both |

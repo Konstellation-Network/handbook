@@ -275,7 +275,8 @@ months* (start = TGE + 1 y, cliff 0, duration 3 y); the liquid 10 % never
 touches a contract — it is a plain genesis balance. Wallet addresses are
 CREATE2-deterministic, so `genesis.json` funds each wallet directly; wallets are
 `Ownable2Step`, and grant amounts must be whole KASH divisible by 10 (team) / 20
-(community) for the split to be exact. The
+(community) for the split to be exact — **enforced by the deploy script since
+2026-09-21**. The
 community-pool seed is genesis `distribution` state (see the sub-bucket table).
 The 30 M-vs-50 M inconsistency this section used to carry was resolved
 2026-09-20 in favour of **50 M**.
