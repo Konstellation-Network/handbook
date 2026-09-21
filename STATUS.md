@@ -125,9 +125,18 @@ explorer can reach it. Validated with `tofu validate` + a credential-free
 `tofu plan` (60 resources at 10 validators; caught two latent bugs in the original scaffold: GCP
 firewalls without `source_ranges`, rpc modules lacking a `private_ip` output),
 `ansible-playbook --syntax-check`, `ansible-lint`, every template rendered.
-Still open: state bucket, three parametrised topology defaults (§5a), version
-pins, on-call rota, and tenderduty is **archived upstream (2025-01-02)** —
-evaluate a maintained fork before mainnet.
+**Review fix round 2026-09-21 (`3f68c01`, 22 findings):** first-apply blockers
+fixed (Hetzner `ash` outside the eu-central subnet, two 404 download URLs, the
+v2 `horcrux cosigner start` command), the ansible re-run that re-pointed
+`cosmovisor/current` to `genesis`, cosmovisor's data backup onto the boot disk
+(`UNSAFE_SKIP_BACKUP=true`, H-1 snapshot is the backup), the §2.7 mount guard
+(`RequiresMountsFor` on every host with a data volume), single-entry bastion
+routing over the tunnel (`Table = off` + src routes), Hetzner private hosts' route/DNS
+before apt, tenderduty perms + `[rpc] laddr` reconciled per role, bastion scrape
+targets, the always-firing `BlockTimeDrift`, and a controller-only
+`ansible/tests/render_test.yml` that asserts each. Still open: state bucket, topology
+defaults (§5a P5, P15), version pins, on-call rota, and tenderduty is **archived
+upstream (2025-01-02)** — evaluate a maintained fork before mainnet.
 
 `contracts` has a Foundry project on `main` (scaffolded `018e3a5`, 2026-09-14): a
 wrapped native token (KASH/`esp`, 18 decimals), `preinstalls/*.json` (deployed
@@ -210,7 +219,7 @@ the §2a restart panic; cutting one now would only be regenerated.
   CI (SHA-pinned `latex-action`; refuses PRs that touch `releases/`),
   `CHANGELOG.md`, `CODEOWNERS`. Builds: **27 pages, no unresolved references**
   (`tectonic` installed via Homebrew for the local build; CI uses latexmk).
-  **19 `\todo{}` placeholders** need human input — the list is auto-generated
+  **18 `\todo{}` placeholders** need human input — the list is auto-generated
   at the end of the PDF; todo #4 (permissioned mechanism) is now answered by D16,
   the rest are §5a P2. `[legal review]`
   markers on the compliance section, token characterisation and disclaimers.
@@ -224,7 +233,13 @@ the §2a restart panic; cutting one now would only be regenerated.
   absent; flipping one nibble fails it. 33/33 tests. `"private": true` until the
   npm scope is claimed and a licence chosen; CI only enforces the invariant on
   GitHub once a `CONTRACTS_READ_TOKEN` secret exists (`contracts` is private).
-  RPC/explorer URLs deliberately empty; WKASH address not yet included.
+  RPC/explorer URLs deliberately empty. **Fix round 2026-09-21 (`20b2ecc`, 38 tests):**
+  publishes `contracts.wkash` = `0x34Ab8285C63b876717C2c56151700D02623559bE` (read from
+  the pin in `contracts/test/DeployWKASH.t.sol`, so drift fails) and renames the native
+  precompile key to `werc20` — the two are different contracts; MetaMask Mobile now accepts
+  the `wallet_addEthereumChain` params (empty `blockExplorerUrls` omitted); the §5.2
+  invariant fails rather than skips on a broken sibling; CI checks out both `contracts`
+  and `konstellation`, so `CONTRACTS_READ_TOKEN` needs read access to **both** (P6).
 - **`faucet`** — `scaffold-faucet` (`172b026`): TypeScript/viem service (one
   runtime dep), `POST /request` accepts `0x` and `kons1…` (in-house bech32),
   per-address + per-IP cooldown behind a store interface (memory default, Redis
@@ -237,6 +252,14 @@ the §2a restart panic; cutting one now would only be regenerated.
   host chain. Defaults to confirm: 10 KASH/request, 24 h cooldown. Side finding:
   the `cosmos1…` comment for `dev0` in `konstellation/local_node.sh` is stale
   upstream text (`…gp95srxm` is the correct encoding).
+  **Fix round 2026-09-21 (`6a9f10c`, 80 tests):** the review drained it live three ways
+  — slow-RPC repeat payouts (cooldown released after a broadcast), leftmost-hop
+  `X-Forwarded-For` trust, and nonce collisions (app-side mempool keeps `pending`
+  flat within a block) — all closed and re-proven against the reviewer's scripts: one
+  broadcast per request with receipt wait (`200 confirmed` / `202` broadcast), local
+  nonce counter (5 parallel → 5 × 200), rightmost validated XFF hop, IPv6 keyed by /64,
+  `application/json` + same-origin required, digest-pinned image, history-walking
+  secret scan.
 - **`explorer`** — `scaffold-blockscout` (2 commits): one `docker-compose.yml`
   for all networks selected by `--env-file` (`.env.local` concrete; testnet-1 /
   konstellation-1 all `TODO-*`, CI enforces they stay placeholders); every image
@@ -268,7 +291,17 @@ the §2a restart panic; cutting one now would only be regenerated.
   true, is_partially_verified: true` — the expected partial match for
   metadata-stripped bytecode. Dev-chain contracts deployed by the contracts agent
   the same evening (WKASH, 13 vesting wallets from a back-dated scratch config, a
-  live `release()`) are indexed there.
+  live `release()`) are indexed there. **Fix round 2026-09-21 (`a9c86b3`, 16 findings,
+  CI green):** frontend env validation per network is a CI step (testnet-1's was
+  failing on an empty port); API rate limit keyed per client behind the proxy (ingress
+  must *set*, not append, `X-Forwarded-For`); `FIRST_BLOCK=1`; published ports bound
+  to loopback; Erlang distribution on an `internal: true` network; 8 MB verification
+  uploads; placeholder guard checks rendered values. **NFT media ships OFF for
+  testnet-1/mainnet** (profile-gated) until P11's bucket exists; on locally.
+  For `konstellation`: Blockscout's realtime fetcher logs `failed to get receipts …
+  tx not found` ~17×/12 min because `newHeads` fires before the node's EVM tx index
+  commits; catchup recovers — cosmos/evm indexer timing, worth a §2a note if it ever
+  matters beyond log noise.
 
 ## 2. Decisions made (all recorded in ENGINEERING.md; every numbered decision D1–D13 is now resolved)
 
@@ -511,7 +544,7 @@ what is still pending (P1–P10).
      alongside `app/feeburn.go` and `app/issuance.go`.
    - ~~**D7/D8 (whitepaper):**~~ **drafted 2026-09-20 on `whitepaper` branch
      `whitepaper-v1-draft`** (27 pp, see §1) including the D7 roadmap and D8
-     sequencing. Owed: the 19 `\todo{}` answers (§5a lists the load-bearing
+     sequencing. Owed: the 18 `\todo{}` answers (§5a lists the load-bearing
      ones), legal review of the compliance/disclaimer sections, review + PR,
      then `make release VERSION=v1.0`.
 6. ~~Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware
@@ -569,7 +602,7 @@ what is still pending (P1–P10).
    on its 2026-09-20 branch** (`contracts`, `whitepaper`, `docs`, `chain-config`,
    `faucet`, `infra`, `explorer`) — lands when those merge. Note `gh api
    orgs/Konstellation-Network/members` now also lists `folajindayo` and `Signor1`,
-   who are in neither the template nor any copy — decide whether to add them
+   and `Sammyowase` (three, as of 2026-09-21), who are in neither the template nor any copy — decide whether to add them
    (§5a). (`ENGINEERING.md`, `CLAUDE.md`, `STATUS.md`, `wt` already live here;
    `bootstrap.sh` recreates the org dir.)
 10. `infra`: testnet-1 scaffold pushed (`0b011f4`); ~~bastion + monitoring host,
@@ -614,6 +647,10 @@ the rest wait. **Network column:** which network the decision actually bites on
 | P8 | `docs` hosting/domain | `docs.konstellation.network` placeholder | both |
 | P9 | tenderduty (paging) is archived upstream — pick a maintained fork | tenderduty | mainnet (fine for testnet) |
 | P11 | NFT media storage: an S3-compatible bucket (R2/S3) with TLS + anonymous read per network, keys into `explorer/.env.<net>` `NFT_MEDIA_S3_*`; a pinning/paid IPFS gateway (ipfs.io rate-limits) | local MinIO only | testnet-1 first |
+| P15 | **Two infra defaults from the fix round (2026-09-21, `3f68c01`)**: (a) GCP validators now `on_host_maintenance = MIGRATE` (GCP docs say Local SSD live-migrates with data; was `TERMINATE` + auto-restart, the §2.7 path) — re-confirm against current GCP docs before the first apply; (b) the public RPC node runs node-local `minimum-gas-prices = 1000000000esp` (1 gwei) as a spam guard — protocol floor stays 0 (`TOKENOMICS.md §3`); confirm the number. | as stated | testnet-1 first |
+| P14 | **Vesting `revoker`/`treasury` type** (contracts review L3): both are immutable per wallet, so they must be address-stable — an EVM Safe qualifies, a Cosmos `x/auth` multisig does **not** (address derives from pubkeys+threshold, changes on signer rotation). Keep immutable (current) or add a timelocked `setRevoker`. Ties to P2 (which multisig). | immutable | mainnet |
+| P13 | `networks/testnet-1/README.md` still says "in-house (5 nodes) … 3–5 external operators invited in phase 6" and offers readers the gentx path — stale D7/D16 (docs review 2026-09-21). Fix with the genesis work. | stale | testnet-1 |
+| P12 | **D16 is decided but not implemented in genesis tooling**: `konstellationd init` writes `x/circuit` `disabled_type_urls: []` and `networks/scripts/gen-genesis.sh` has no circuit step (found by the docs review 2026-09-21). Add `/cosmos.staking.v1beta1.MsgCreateValidator` to circuit genesis state in `gen-genesis.sh` (or the network profile) before the testnet-1 genesis is cut; `tests/e2e` should assert the refusal. | not done | both |
 | ~~P10~~ | ~~D16 admission runbook~~ **written** (`infra/runbooks/validator-admission.md`, `close-known-gaps` `7ae9164`); rehearsal is a §15 phase 5 item | — | both |
 
 ## 6. Tooling and locations

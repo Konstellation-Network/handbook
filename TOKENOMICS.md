@@ -82,6 +82,12 @@ At 25 % bonded with a 5 % commission validator: 8.00 % × 0.98 × 0.95 ≈ **7.4
 
 ## 3. Fees and burn (D5)
 
+> Node-local note (2026-09-21): the protocol `min_gas_price` floor below is 0. The
+> foundation's *public RPC node* additionally sets a node-local
+> `minimum-gas-prices = 1000000000esp` (1 gwei) in `app.toml` as a spam guard
+> (`infra` `group_vars/rpc.yml`). It is not consensus and changes nothing here;
+> confirm the value (STATUS §5a P15).
+
 Konstellation runs EIP-1559 for every transaction, EVM and Cosmos alike.
 
 | Parameter | Value | Note |
@@ -205,8 +211,8 @@ Community & developers, 33 %, split:
 
 | Sub-bucket | Share | KASH | At genesis | Purpose | Steward |
 |---|---|---|---|---|---|
-| Ecosystem & developer grants | 18 % | 180 M | locked | builders, integrations, tooling, bug bounties | foundation grants committee; large grants ratified by governance. Non-revocable vesting wallets, beneficiary = foundation multisig, 5 yearly tranches 30/25/20/15/10 % (54/45/36/27/18 M) |
-| User & developer incentives | 10 % | 100 M | locked | usage rewards, airdrops, liquidity-mining, hackathon prizes | foundation, programme by programme. Same wallet shape, tranches 30/25/20/15/10 % (30/25/20/15/10 M) |
+| Ecosystem & developer grants | 18 % | 180 M | locked | builders, integrations, tooling, bug bounties | foundation grants committee; large grants ratified by governance. Non-revocable vesting wallets, beneficiary = foundation multisig, 5 yearly tranches 30/25/20/15/10 % (54/45/36/27/18 M), each vesting linearly within its year |
+| User & developer incentives | 10 % | 100 M | locked | usage rewards, airdrops, liquidity-mining, hackathon prizes | foundation, programme by programme. Same wallet shape, tranches 30/25/20/15/10 % (30/25/20/15/10 M), linear within each year |
 | On-chain community pool seed | 5 % | 50 M | **liquid** | governance-spendable from day one, on top of the 2 % tax | `x/distribution` community pool, gov proposals only — **written directly into genesis `distribution` state**, never through a contract |
 
 The community pool is a Cosmos *module account*: no key holds it, only a passed
@@ -267,7 +273,9 @@ yet: names and individual amounts inside the team bucket.
 locked 90 % of a team grant is *0 at the 12-month cliff, then linear over 36
 months* (start = TGE + 1 y, cliff 0, duration 3 y); the liquid 10 % never
 touches a contract — it is a plain genesis balance. Wallet addresses are
-CREATE2-deterministic, so `genesis.json` funds each wallet directly. The
+CREATE2-deterministic, so `genesis.json` funds each wallet directly; wallets are
+`Ownable2Step`, and grant amounts must be whole KASH divisible by 10 (team) / 20
+(community) for the split to be exact. The
 community-pool seed is genesis `distribution` state (see the sub-bucket table).
 The 30 M-vs-50 M inconsistency this section used to carry was resolved
 2026-09-20 in favour of **50 M**.
@@ -298,6 +306,6 @@ but numbers that are either assumed, defaulted, or need re-checking:
 |---|---|---|---|
 | Genesis supply | **1 B KASH, decided** with §7 | F = 1265 was sized against it | — |
 | `blocks_per_year` | 21,038,400 (1.5 s) | scales issuance linearly; must match observed block time | gov param, after testnet-1 |
-| Whitepaper | **v1.0 drafted 2026-09-20** (`whitepaper` branch `whitepaper-v1-draft`, 27 pp) | economics section written from §2–§7; 19 `\todo{}` items and legal review outstanding | `whitepaper` |
+| Whitepaper | **v1.0 drafted 2026-09-20** (`whitepaper` branch `whitepaper-v1-draft`, 27 pp) | economics section written from §2–§7; 18 `\todo{}` items and legal review outstanding | `whitepaper` |
 | Team vesting shape | **decided 2026-09-20**: 10 % liquid at genesis; 90 % 0-at-cliff (12 mo) then linear 36 mo, 365-day years | — | `VestingSchedules.sol` + genesis allocations |
 | Community 30 M liquid vs 50 M pool seed | **resolved 2026-09-20: 50 M**, seeded in genesis `distribution` state; 280 M vests | — | §7 |
