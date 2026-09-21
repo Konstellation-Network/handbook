@@ -308,6 +308,12 @@ the §2a restart panic; cutting one now would only be regenerated.
   to loopback; Erlang distribution on an `internal: true` network; 8 MB verification
   uploads; placeholder guard checks rendered values. **NFT media ships OFF for
   testnet-1/mainnet** (profile-gated) until P11's bucket exists; on locally.
+  **Gas tracker (`7dae2d3`):** "N/A Gwei" was a real 0 — the oracle ignores zero-priced
+  txs and falls back to the base fee, which decays to 0 because `min_gas_price = 0`
+  (`TOKENOMICS.md §3`); window widened to 28 800 blocks and the sub-unit name set to
+  `esp` (10⁹ esp renders as **Gesp**). On an idle chain it will read N/A again — inherent
+  to a zero-floor fee market; the public RPC's 1 gwei node-local floor (P15) is what
+  makes testnet-1 read ~1 Gesp. A protocol floor would be a TOKENOMICS §3 decision.
   For `konstellation`: Blockscout's realtime fetcher logs `failed to get receipts …
   tx not found` ~17×/12 min because `newHeads` fires before the node's EVM tx index
   commits; catchup recovers — cosmos/evm indexer timing, worth a §2a note if it ever
