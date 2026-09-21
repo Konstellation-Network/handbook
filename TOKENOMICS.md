@@ -19,7 +19,7 @@ Genesis supply is **1,000,000,000 KASH** (decided 2026-09-15 with the allocation
 | Gas token | KASH (same asset, no wrapped/second token) | §3 |
 | Genesis supply | **1,000,000,000 KASH** | §7 |
 | Max supply | **uncapped** (`x/mint` `max_supply = 0`) | `app/genesis.go` |
-| WKASH (ERC-20 wrapper) | post-genesis deploy, not a preinstall; the `werc20` precompile at `0xD4949664…` also exposes the native token to Solidity | `ENGINEERING.md §6.3` |
+| WKASH (ERC-20 wrapper) | post-genesis deploy, not a preinstall, at **`0x34Ab8285C63b876717C2c56151700D02623559bE`** on every network (CREATE2, pinned 2026-09-20); the `werc20` precompile at `0xD4949664…` also exposes the native token to Solidity | `ENGINEERING.md §6.3` |
 
 ---
 
@@ -139,7 +139,7 @@ of demand for blockspace, issuance a function of security budget.
 | Downtime slash | **0.01 %** of stake |
 | Downtime definition | miss > 50 % of a 100-block window (SDK default) |
 | Downtime jail | 10 minutes, then unjail tx (SDK default) |
-| Launch validator set | 5–10 self-run nodes, permissioned at launch (D7) |
+| Launch validator set | **10 foundation-run validators at genesis, `max_validators` 30, further admission permissioned** (D7, re-decided 2026-09-20; mechanism D16) — same on testnet-1 and mainnet |
 
 Slashed stake is burned. Code: `app/config/chain.go`, `app/app.go`.
 
@@ -194,26 +194,35 @@ and a treasury. Confirmed as proposed. On a 1,000,000,000 KASH supply:
 
 | Bucket | Share | KASH | Liquid at genesis | Vesting / release | Held by |
 |---|---|---|---|---|---|
-| **Founding team & early contributors** | **22 %** | 220 M | 0 | 12-month cliff, then linear over 36 months (4 years total) | D12 Solidity vesting contracts, one per person |
-| **Community & developers** | **33 %** | 330 M | 30 M | released programmatically over 5 years, front-loaded | see split below |
+| **Founding team & early contributors** | **22 %** | 220 M | **22 M (10 % of each grant)** | remaining 90 %: 12-month cliff, then linear over 36 months (4 years total) — decided 2026-09-20 | liquid part paid to each member's address in genesis; locked part in a D12 revocable vesting wallet, one per person |
+| **Community & developers** | **33 %** | 330 M | **50 M** (the community-pool seed, decided 2026-09-20) | remaining 280 M released over 5 years, front-loaded | see split below |
 | **Treasury (foundation)** | **25 %** | 250 M | 50 M | 20 % liquid at genesis, remainder linear over 48 months | foundation multisig (≥ 3-of-5); vesting contract for the locked part |
-| **Validator bootstrap & staking** | **12 %** | 120 M | 120 M, bonded | none — bonded at genesis via gentx | launch validators' operating entities (D7: 5–10 self-run) |
+| **Validator bootstrap & staking** | **12 %** | 120 M | 120 M, bonded | none — bonded at genesis via gentx | the foundation, as operator of all 10 launch validators (D7) |
 | **Liquidity & public distribution** | **8 %** | 80 M | 80 M | none | foundation, earmarked (DEX liquidity, market makers, any public sale) |
-| | **100 %** | 1 000 M | 280 M (28 %) | | |
+| | **100 %** | 1 000 M | **322 M (32.2 %)** | | |
 
 Community & developers, 33 %, split:
 
-| Sub-bucket | Share | Purpose | Steward |
-|---|---|---|---|
-| Ecosystem & developer grants | 18 % | builders, integrations, tooling, bug bounties | foundation grants committee; large grants ratified by governance |
-| User & developer incentives | 10 % | usage rewards, airdrops, liquidity-mining, hackathon prizes | foundation, programme by programme |
-| On-chain community pool seed | 5 % | governance-spendable from day one, on top of the 2 % tax | `x/distribution` community pool, gov proposals only |
+| Sub-bucket | Share | KASH | At genesis | Purpose | Steward |
+|---|---|---|---|---|---|
+| Ecosystem & developer grants | 18 % | 180 M | locked | builders, integrations, tooling, bug bounties | foundation grants committee; large grants ratified by governance. Non-revocable vesting wallets, beneficiary = foundation multisig, 5 yearly tranches 30/25/20/15/10 % (54/45/36/27/18 M) |
+| User & developer incentives | 10 % | 100 M | locked | usage rewards, airdrops, liquidity-mining, hackathon prizes | foundation, programme by programme. Same wallet shape, tranches 30/25/20/15/10 % (30/25/20/15/10 M) |
+| On-chain community pool seed | 5 % | 50 M | **liquid** | governance-spendable from day one, on top of the 2 % tax | `x/distribution` community pool, gov proposals only — **written directly into genesis `distribution` state**, never through a contract |
+
+The community pool is a Cosmos *module account*: no key holds it, only a passed
+governance proposal (`MsgCommunityPoolSpend`) moves anything out, and the chain's
+own §4.1.1 guard refuses EVM value transfers into it. So it is the one part of
+this bucket that cannot sit behind a vesting contract; it is seeded in genesis
+and grows by the 2 % tax. Grants and incentives, which the foundation spends
+programmatically, are the parts that vest.
 
 Why these numbers:
 
-- **Team 22 %, fully locked, 1-year cliff** is the middle of the L1 range
-  (Solana 12.5 %, Aptos 19 %, Sui 20 %, Avalanche 10 %; Sei/Berachain higher)
-  and reads as committed rather than extractive. Nothing is sellable in year 1.
+- **Team 22 %** is the middle of the L1 range (Solana 12.5 %, Aptos 19 %,
+  Sui 20 %, Avalanche 10 %; Sei/Berachain higher). **10 % of each grant is
+  liquid at launch** (decided 2026-09-20) so members have something in hand;
+  the other 90 % is behind a 1-year cliff and vests over the following 3 years,
+  so 90 % of the team's allocation is still unsellable in year 1.
 - **Community 33 % is the largest bucket** — it is what "favour the community"
   looks like on paper, and grants + incentives are the actual growth lever for a
   new EVM chain.
@@ -222,20 +231,27 @@ Why these numbers:
 - **Validator 12 % bonded at genesis** ⇒ ~120 M bonded on day one ⇒ **≈11.5 %
   staking APR** from D4's curve, high enough to pull outside delegations in as
   the set opens up (D7), and falling naturally as they arrive.
-- **28 % liquid at genesis** (validators' bonded stake + treasury tranche +
-  liquidity) is enough float for a functioning market without a supply overhang.
+- **32.2 % liquid at genesis** (validators' bonded stake 120 M + treasury
+  tranche 50 M + liquidity 80 M + community-pool seed 50 M + team 22 M) is
+  enough float for a functioning market without a supply overhang; the bonded
+  120 M is not actually sellable without a 21-day unbond, and the pool's 50 M
+  only moves by governance.
 
-Year-by-year circulating supply (issuance excluded, community releases
-front-loaded 30 / 25 / 20 / 15 / 10 %):
+Year-by-year circulating supply (issuance excluded; community = 50 M pool
+seed at genesis + 280 M released 30 / 25 / 20 / 15 / 10 % per year; team =
+22 M at genesis + 198 M vesting linearly from month 12 to month 48):
 
 | End of year | Team | Community | Treasury | Validators | Liquidity | **Circulating** |
 |---|---|---|---|---|---|---|
-| genesis | 0 | 30 M | 50 M | 120 M | 80 M | **280 M (28 %)** |
-| 1 | 0 | 120 M | 100 M | 120 M | 80 M | **420 M (42 %)** |
-| 2 | 73 M | 195 M | 150 M | 120 M | 80 M | **618 M (62 %)** |
-| 3 | 147 M | 255 M | 200 M | 120 M | 80 M | **802 M (80 %)** |
-| 4 | 220 M | 300 M | 250 M | 120 M | 80 M | **970 M (97 %)** |
+| genesis | 22 M | 50 M | 50 M | 120 M | 80 M | **322 M (32.2 %)** |
+| 1 | 22 M | 134 M | 100 M | 120 M | 80 M | **456 M (45.6 %)** |
+| 2 | 88 M | 204 M | 150 M | 120 M | 80 M | **642 M (64.2 %)** |
+| 3 | 154 M | 260 M | 200 M | 120 M | 80 M | **814 M (81.4 %)** |
+| 4 | 220 M | 302 M | 250 M | 120 M | 80 M | **972 M (97.2 %)** |
 | 5 | 220 M | 330 M | 250 M | 120 M | 80 M | **1 000 M (100 %)** |
+
+(Superseded 2026-09-20: the earlier table had team 0 at genesis and community
+30 M; both moved by the decisions above.)
 
 What this unblocks: the D12 vesting contracts have a concrete spec (cliff +
 linear, per-beneficiary), and `networks/testnet-1/genesis.json` can mirror the
@@ -246,6 +262,33 @@ tokens are the beneficiary's. Treasury and community schedules are not
 revocable. Not needed
 yet: names and individual amounts inside the team bucket.
 
+**Code (2026-09-20):** `contracts/src/vesting/VestingSchedules.sol` (branch
+`vesting-d12`) is where these numbers live; a vesting year is 365 days. The
+locked 90 % of a team grant is *0 at the 12-month cliff, then linear over 36
+months* (start = TGE + 1 y, cliff 0, duration 3 y); the liquid 10 % never
+touches a contract — it is a plain genesis balance. Wallet addresses are
+CREATE2-deterministic, so `genesis.json` funds each wallet directly. The
+community-pool seed is genesis `distribution` state (see the sub-bucket table).
+The 30 M-vs-50 M inconsistency this section used to carry was resolved
+2026-09-20 in favour of **50 M**.
+
+**Glossary, because these words carry the whole section:** a *vesting schedule*
+is the rule for when locked tokens become the holder's to move. A *cliff* is a
+period during which nothing at all unlocks — the team's is 12 months, so a
+member who leaves in month 8 walks away with only their liquid 10 %. *Linear
+vesting* then releases a constant amount per second until the end (the team's
+runs 36 months after the cliff, so at month 24 — twelve months into the
+36 — one third of the locked part is releasable, matching the 88 M in the
+table). *Tranches* split a bucket into dated portions: the community buckets
+have one per year, front-loaded (30 % in year 1, then 25/20/15/10), and as
+built each year's tranche vests linearly *within* its year, so the year-end
+totals in the table are exact and nothing waits for a single unlock date. (If
+hard step-unlocks at each year-end are wanted instead, that is a one-line change
+in `VestingSchedules.communityTranche` — not chosen.) *Revocable* (team only) means
+the foundation multisig can stop a schedule: what has vested stays with the
+member, what has not returns to the treasury. `release()` on a wallet moves
+whatever has vested so far to the beneficiary; nobody else can move it.
+
 ## 8. Open items
 
 Not decisions in `ENGINEERING.md §11`'s sense (every numbered one is resolved),
@@ -255,4 +298,6 @@ but numbers that are either assumed, defaulted, or need re-checking:
 |---|---|---|---|
 | Genesis supply | **1 B KASH, decided** with §7 | F = 1265 was sized against it | — |
 | `blocks_per_year` | 21,038,400 (1.5 s) | scales issuance linearly; must match observed block time | gov param, after testnet-1 |
-| Whitepaper | not written | §2–§7 above are the material for its economics section (D7, D8 also pending there) | `whitepaper` |
+| Whitepaper | **v1.0 drafted 2026-09-20** (`whitepaper` branch `whitepaper-v1-draft`, 27 pp) | economics section written from §2–§7; 19 `\todo{}` items and legal review outstanding | `whitepaper` |
+| Team vesting shape | **decided 2026-09-20**: 10 % liquid at genesis; 90 % 0-at-cliff (12 mo) then linear 36 mo, 365-day years | — | `VestingSchedules.sol` + genesis allocations |
+| Community 30 M liquid vs 50 M pool seed | **resolved 2026-09-20: 50 M**, seeded in genesis `distribution` state; 280 M vests | — | §7 |

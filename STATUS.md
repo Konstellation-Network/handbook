@@ -1,6 +1,19 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-20 — **Phase 3 (safety rails, §13) merged: konstellation PR #12
+**Updated:** 2026-09-20 (evening) — **seven non-chain repos advanced in parallel,
+each on an unpushed local branch, no PRs yet** (see §1 per repo and §5a for the
+decisions they surfaced): `contracts` D12 vesting + WKASH pinned at
+`0x34Ab8285C63b876717C2c56151700D02623559bE` (`vesting-d12`), `whitepaper` v1.0
+draft, 27 pp (`whitepaper-v1-draft`), `docs` four pages filled (`fill-docs-pages`),
+`chain-config` package + §5.2 invariant test (`scaffold-package`), `faucet` live-tested
+on the dev chain (`scaffold-faucet`), `infra` all "Known gaps" closed
+(`close-known-gaps`), `explorer` Blockscout stack live-indexing the dev chain
+(`scaffold-blockscout`). Every repo now has a `CODEOWNERS`. **Same evening: D7 re-decided (10
+foundation-run validators, admission permissioned, both networks), D16 admission via
+`x/circuit`, D12 team 10 % at TGE, community pool 50 M — `TOKENOMICS.md §7`
+rewritten; `contracts` and `whitepaper` branches being updated to match.** Next:
+review + PR each branch; §5a P1–P10.
+Earlier the same day — **Phase 3 (safety rails, §13) merged: konstellation PR #12
 (`a9051f6`).** `x/circuit` (SDK contrib, D14) wired into the router, ante chain, mempool
 pre-check and the tx-path precompiles, authz-nested messages included, its own and gov's
 messages untrippable; `x/ratelimit` (own module, D15 — nothing exists for ibc-go v11) as
@@ -81,8 +94,9 @@ after pinning the two contracts in `contracts` PR #1. Verified on a fresh node:
 `SenderAddressResult` (`0x6ca7b806`) on both v0.7 and v0.8.
 
 `infra` has a testnet-1 scaffold, split across two clouds at the user's
-request: 3 validators/sentries + 1 archive on Hetzner, 2 validators/sentries +
-1 archive + 1 RPC on GCP (terraform modules per provider, ansible roles for
+request — **since 2026-09-20 (D7): 5 validators/sentries + 1 archive on Hetzner, 5
+validators/sentries + 1 archive + 1 RPC on GCP**, 26 hosts colocated / 29 with
+dedicated cosigners (was 3 + 2; terraform modules per provider, ansible roles for
 node/cosmovisor/horcrux/monitoring/firewall, prometheus alert rules) —
 pushed to `origin/main` as `0b011f4`, but not yet applied against real
 infrastructure. This matches `ENGINEERING.md §1`'s own
@@ -94,9 +108,26 @@ this was a deliberate testnet-1-only call (documented at length in
 `terraform/modules/gcp/validator`'s `local_ssd_count` variable and
 `infra/README.md`) that MUST be revisited before any mainnet validator runs on
 GCP, given the double-sign risk in `ENGINEERING.md §2.7`. See
-`infra/README.md` "Known gaps" for the rest of what's missing before a real
-`terraform apply` (bastion host, monitoring host, dedicated horcrux cosigners,
-version pins, state backend).
+`infra/README.md` "Known gaps" for what's missing before a real `terraform apply`.
+**Gaps closed 2026-09-20 on branch `close-known-gaps` (5 commits, unpushed, nothing
+applied):** bastion modules for both clouds (private-only hosts reach SSH only via
+their cloud's bastion; the Hetzner bastion is also the NAT gateway because
+public-IP-less Hetzner hosts have no egress at all; GCP gets Cloud NAT), a
+WireGuard site-to-site tunnel between the two bastions with routes so monitoring
+and cosigners are cloud-agnostic, a monitoring host (Prometheus/Alertmanager/
+Grafana/tenderduty, `alert_*` route is a placeholder), dedicated Horcrux
+cosigners behind `horcrux_mode` (`colocated` default for testnet-1; `dedicated`
+mandatory before mainnet, §18), the four §6.4 runbooks plus `on-call.md`,
+`CODEOWNERS`, `runbooks/validator-admission.md` (the D16 procedure, unrehearsed),
+and the archive node's `[json-rpc] address`/`ws-address` now bind
+the private address (`jsonrpc_bind_address`, gated by `explorer_cidrs`) so the
+explorer can reach it. Validated with `tofu validate` + a credential-free
+`tofu plan` (60 resources at 10 validators; caught two latent bugs in the original scaffold: GCP
+firewalls without `source_ranges`, rpc modules lacking a `private_ip` output),
+`ansible-playbook --syntax-check`, `ansible-lint`, every template rendered.
+Still open: state bucket, three parametrised topology defaults (§5a), version
+pins, on-call rota, and tenderduty is **archived upstream (2025-01-02)** —
+evaluate a maintained fork before mainnet.
 
 `contracts` has a Foundry project on `main` (scaffolded `018e3a5`, 2026-09-14): a
 wrapped native token (KASH/`esp`, 18 decimals), `preinstalls/*.json` (deployed
@@ -117,19 +148,45 @@ The wrapped-token contract was renamed `WKONS` → `WKASH` (`57cb107`, 2026-09-1
 to match the D2 token symbol. It ships as a **post-genesis deploy, not a genesis
 preinstall** (decided 2026-09-14, recorded in `ENGINEERING.md §6.3`) — predictable
 address available via `Create2Deployer` + a fixed salt without the permanence cost
-of baking bespoke, not-yet-audited bytecode into `genesis.json`. `src/vesting/` is
-still not built; D12 is decided (Solidity vesting contracts), so this is unblocked,
-just not started.
+of baking bespoke, not-yet-audited bytecode into `genesis.json`. **Built 2026-09-20
+on branch `vesting-d12` (6 commits, unpushed):** `script/DeployWKASH.s.sol` pins
+**WKASH at `0x34Ab8285C63b876717C2c56151700D02623559bE`** (salt
+`keccak256("konstellation-network/contracts:WKASH:v1")`, init-code hash
+`0x0802161d…68e64`, same on every network; cross-checked with `cast create2`);
+`foundry.toml` strips bytecode metadata (`bytecode_hash = "none"`,
+`cbor_metadata = false`) so CREATE2 addresses depend on code only — Blockscout
+verifies as a partial match. **D12 `src/vesting/`** on OpenZeppelin v5.7.0
+(submodule, pinned): `KonstellationVestingWallet` (non-revocable, linear +
+optional cliff, native KASH), `RevocableVestingWallet` (one-shot `revoke()` by an
+immutable `revoker` = foundation multisig; unvested → immutable `treasury`,
+vested stays with the beneficiary), `VestingSchedules` (the one place
+`TOKENOMICS.md §7`'s numbers live), `script/DeployVesting.s.sol` (JSON config →
+CREATE2 wallets; addresses are known pre-genesis, so `genesis.json` can hold each
+allocation at its wallet address from block 0 — tested). 56 tests incl. 5 fuzz
+properties × 1000 runs. **ERC-20 `release(token)` is disabled on purpose** (see
+§3): cosmos/evm's `werc20` precompile mirrors the native balance as an ERC-20, so
+OZ's stock path would let a beneficiary withdraw the same KASH twice. Vesting is
+native-KASH only. `CODEOWNERS` added with separate rows for `src/vesting/` and
+`preinstalls/`. Defaults the agent picked that need confirming are in §5a.
 
-`docs` has a Docusaurus site scaffolded and pushed to `main` (`2f2e598`, 2026-09-14):
-stub docs pages, no real content written yet. CI (`npm ci && npm run build`, with
-`onBrokenLinks: 'throw'`) added 2026-09-15. Two pages can be filled from merged work
-without waiting for testnet: `contracts.md` (real preinstall addresses from
-`contracts/preinstalls/*.json` — the stub predates the `SenderCreator`s and omits them)
-and `run-a-validator.md` (`konstellationd init`/`start` behaviour from §3 below). The
-rest (`rpc-endpoints.md`, `upgrades.md`, joining testnet-1) stays stubbed until
-`networks/testnet-1` exists. Hosting/domain for the site is undecided
-(`docusaurus.config.js` `url` is a placeholder).
+`docs` has a Docusaurus site scaffolded and pushed to `main` (`2f2e598`, 2026-09-14);
+CI (`npm ci && npm run build`, with `onBrokenLinks: 'throw'`) added 2026-09-15.
+**Filled 2026-09-20 on branch `fill-docs-pages` (`b1e4c43`, unpushed; build green):**
+`contracts.md` (all 10 preinstalls with addresses copied from
+`contracts/preinstalls/*.json` and cosmos/evm v0.7.3, selectors checked against the
+pinned bytecode; precompile table incl. `ICompliance` at `0x…0900` with the
+interface copied verbatim; WKASH and vesting addresses marked TBD),
+`run-a-validator.md` (hardware, ports from a real `init` run — note `init` writes
+`[json-rpc] enable = false` and `[api] enable = false`, so an RPC node enables them
+by hand — cosmovisor layout, the exact chain-id-mismatch error strings from the
+`a9051f6` binary, §2.6/§2.7 callouts), new `troubleshooting.md` (the
+invisible-to-`eth_*` failure with `tx_search` recipes, module-account refusal,
+"address is frozen", circuit-breaker errors, the PR #8 restart panic as an
+old-binary marker), `quickstart.md` (MetaMask params for testnet-1 and local dev,
+first tx with `cast`), `CODEOWNERS`. `rpc-endpoints.md` / `upgrades.md` stay
+stubbed until `networks/testnet-1` exists; every URL is a marked TBD.
+Hosting/domain for the site is still undecided (`docusaurus.config.js` `url` is a
+placeholder).
 
 `networks` is scaffolded — **PR #1** (https://github.com/Konstellation-Network/networks/pull/1)
 **merged** into `main` as `c88fd34` on 2026-09-16 after a `/code-review` pass (8 findings,
@@ -144,8 +201,74 @@ join docs with TBDs marked, `templates/upgrade.md`, `RELEASES.md` checksum ledge
 **No `genesis.json` yet, deliberately** — it waits on konstellation #5–#7, D6 and
 the §2a restart panic; cutting one now would only be regenerated.
 
-All other repos (`explorer`, `whitepaper`, `chain-config`, `faucet`) exist on
-GitHub, private, with an `init` commit only.
+`explorer`, `whitepaper`, `chain-config` and `faucet` were `init`-only until
+2026-09-20; each now has one unpushed local branch (no PR yet):
+
+- **`whitepaper`** — `whitepaper-v1-draft` (2 commits): `src/whitepaper.tex` +
+  `src/sections/*.tex` covering every decided item (D1–D15, §10 risks, D7
+  roadmap, D8 sequencing, §14, §12/§15), `Makefile` (`pdf`/`check`/`release`),
+  CI (SHA-pinned `latex-action`; refuses PRs that touch `releases/`),
+  `CHANGELOG.md`, `CODEOWNERS`. Builds: **27 pages, no unresolved references**
+  (`tectonic` installed via Homebrew for the local build; CI uses latexmk).
+  **19 `\todo{}` placeholders** need human input — the list is auto-generated
+  at the end of the PDF; todo #4 (permissioned mechanism) is now answered by D16,
+  the rest are §5a P2. `[legal review]`
+  markers on the compliance section, token characterisation and disclaimers.
+- **`chain-config`** — `scaffold-package` (2 commits): TypeScript package
+  `@konstellation-network/chain-config` (ESM + CJS + types, zero runtime deps):
+  `konstellation` / `testnet` / `localnet` as viem-compatible `Chain` objects plus
+  `cosmosChainId`, `bech32Prefix`, `baseDenom`; a `contracts` map of all 10
+  preinstalls + 12 precompiles; EIP-3085 params. **§5.2 invariant test** reads
+  `../contracts/preinstalls/*.json` and the konstellation repo (chain ids, denom,
+  precompile addresses) in both directions; skips loudly if the sibling is
+  absent; flipping one nibble fails it. 33/33 tests. `"private": true` until the
+  npm scope is claimed and a licence chosen; CI only enforces the invariant on
+  GitHub once a `CONTRACTS_READ_TOKEN` secret exists (`contracts` is private).
+  RPC/explorer URLs deliberately empty; WKASH address not yet included.
+- **`faucet`** — `scaffold-faucet` (`172b026`): TypeScript/viem service (one
+  runtime dep), `POST /request` accepts `0x` and `kons1…` (in-house bech32),
+  per-address + per-IP cooldown behind a store interface (memory default, Redis
+  optional), refuses the zero address, all 10 module accounts and 28 precompiles
+  (**a copy of `konstellation/app/config/permissions.go` — must move with it**),
+  optional hCaptcha/Turnstile (**off by default; on before public**), refuses
+  `CHAIN_ID=5667` at startup (§18 testnet-only). 47 tests; **live-verified on
+  the dev chain**: two real sends (`0x33fab7c6…`, `0x8002198a…`), repeat → 429,
+  fee collector → 400 `blocked_recipient`; Docker image built and reached the
+  host chain. Defaults to confirm: 10 KASH/request, 24 h cooldown. Side finding:
+  the `cosmos1…` comment for `dev0` in `konstellation/local_node.sh` is stale
+  upstream text (`…gp95srxm` is the correct encoding).
+- **`explorer`** — `scaffold-blockscout` (2 commits): one `docker-compose.yml`
+  for all networks selected by `--env-file` (`.env.local` concrete; testnet-1 /
+  konstellation-1 all `TODO-*`, CI enforces they stay placeholders); every image
+  pinned tag@digest, CI rejects `latest`; `scripts/check-rpc.sh` preflight
+  enforces the §5.2 archive invariant (chain id, state at block 1,
+  `debug_traceTransaction`, WS) and the backend won't start until it passes;
+  ERC-4337 user-ops indexer on for v0.7/v0.8; placeholder SVG logo.
+  **Live-verified: indexed the dev chain to head** (3049 blocks, internal txs
+  traced, a fresh `cast send` visible in `/api/v2` within seconds). Two
+  findings: (1) **`ETHEREUM_JSONRPC_GETH_TRACE_BY_BLOCK=false` is mandatory** —
+  cosmos/evm v0.7.3's `debug_traceBlockByNumber` omits per-entry `txHash` and
+  crashes Blockscout's block parser; per-tx tracing works. (2) **Public
+  Blockscout images lag source by two majors** (registry stops at backend 9.0.2
+  / frontend v2.3.5, source is 11.3.1; newer images go to a private registry
+  only) — decided: 9.0.2 for testnet-1, re-decide for mainnet (§5a).
+  **2026-09-21 (`65b453f`): NFT media handler enabled** (founder decision) as a
+  second backend container in worker mode; thumbnails are pushed to S3-compatible
+  storage — Blockscout 9.0.2 hard-codes https:443 for the bucket, so **each real
+  network needs an R2/S3 bucket with TLS + anonymous read** (`NFT_MEDIA_S3_*`
+  placeholders; an `infra` item). Locally a `local-s3` compose profile runs
+  MinIO with a self-signed cert. Verified end to end with a scratch ERC-721 (three
+  tokens: https PNG, small PNG, IPFS) — metadata indexed, 60/250/500 px thumbnails
+  generated and served. Upstream quirk worked around: the handler's in-progress
+  queue never expires across restarts, so the backend clears
+  `dets/tasks_in_progress` at start. Two **verifier bugs fixed** the same day: the
+  compilers volume was root-owned (verification always failed —
+  `verifier-init` chowns it) and solc is amd64-only (`platform: linux/amd64`).
+  Proof: WKASH at `0x34Ab82…59bE` verified on the local stack, `is_verified:
+  true, is_partially_verified: true` — the expected partial match for
+  metadata-stripped bytecode. Dev-chain contracts deployed by the contracts agent
+  the same evening (WKASH, 13 vesting wallets from a back-dated scratch config, a
+  live `release()`) are indexed there.
 
 ## 2. Decisions made (all recorded in ENGINEERING.md; every numbered decision D1–D13 is now resolved)
 
@@ -157,22 +280,27 @@ GitHub, private, with an `init` commit only.
 | D4 emission (2026-09-15) | **stake-based issuance modelled on Ethereum post-merge**: `annual KASH = F × √(bonded KASH)`, **F = 1265** against an assumed **1 B KASH genesis supply** (8 % APR at 25 % bonded, 4 % at 100 %). No bonded-ratio loop. Built as stock `x/mint`'s `MintFn` — no custom module — **PR #5, open** | §11; `app/issuance.go`, `app/config/chain.go` |
 | D5 base fee (2026-09-15) | **burn** the EIP-1559 base fee: `baseFee × BlockGasUsed` burned from the fee collector at EndBlock, tips still to validators — **PR #5, open** | §11; `app/feeburn.go` |
 | D6 compliance (re-decided 2026-09-15) | **`x/compliance` module + chain-wide ante decorator**, with a precompile so Solidity sees the same list. Was "precompile only" earlier the same day. Built — **PR #10 (open, 2026-09-16)**; legal review still needed before mainnet | §10, §11, §18 |
-| D7 validator set (2026-09-15) | state it honestly: 5–10 self-run = **permissioned at launch**, validators added over time as the network decentralises (roadmap to be published in whitepaper) | §11 |
+| D7 validator set (2026-09-15) | ~~5–10 self-run, permissioned at launch~~ **superseded 2026-09-20 — see the re-decided row below** | §11 |
 | D8 launch value ceiling (2026-09-15) | **no bridge on day one**; post-launch sequence (soak → build+audit bridge & IBC rate-limit middleware in parallel → calibrate caps → open with caps enforced in-contract) recorded in §11 | §11, §13 |
 | D9 audit (2026-09-15) | **Informal Systems** | §11, §12 |
 | D10 (2026-09-14) | staking: DPoS, unbonding 21d, `min_commission_rate` 5%, **`max_validators` 30**, downtime slash 0.01%, double-sign slash 5% — **merged, PR #3 (`21da290`)** | §11; `app/config/chain.go` + `app/app.go` |
 | D11 | gov: min deposit **1 000 KASH** / expedited **5 000 KASH** (raised 2026-09-15 from 10 / 50, **PR #6 merged `a46cde7` 2026-09-16**), refundable unless vetoed (pinned); voting period **3d**, quorum **33.4%**, threshold **50%** (2026-09-14, merged PR #3 `21da290`). testnet-1/dev: 2 h / 30 min / 10 / 50 (PR #7) | §11, §18; `app/config/chain.go` + `app/app.go` |
-| D12 vesting (confirmed 2026-09-15) | Solidity vesting contracts, not `x/auth` vesting accounts. `contracts/src/vesting/` — **not yet built** | §11 |
+| D12 vesting (confirmed 2026-09-15) | Solidity vesting contracts, not `x/auth` vesting accounts. `contracts/src/vesting/` — **built 2026-09-20 on `contracts` branch `vesting-d12`, pending review/PR** (OZ v5.7.0 base; ERC-20 path disabled — werc20 double-withdraw; see §1, §3, §5a) | §11 |
 | D13 Krakatoa mempool (2026-09-14) | keep app-side EVM mempool **ON** — no code change, already the default behaviour | §11 |
 | D14 circuit breaker (2026-09-19) | SDK **`contrib/x/circuit`** (deprecated in 0.54, unmaintained — vendor if dropped) over a bespoke one. Gov is authority; ops multisig granted in genesis | §7.1, §11, §13, §18 |
 | D15 IBC rate limiting (2026-09-19) | **own `x/ratelimit`**: no module for ibc-go v11 exists; ibc-apps' semantics (% of supply, net flow, undo on error ack/timeout), gov-only messages, no whitelist | §11, §13 |
+| D7 validator set (re-decided 2026-09-20) | **10 validators at genesis, all foundation-run (`infra`: 5 Hetzner + 5 GCP), `max_validators` 30, admission of independent operators permissioned, opening in stages by gov; same on testnet-1 and mainnet** (was 5–10 self-run). §9.4/§15/§18 reconciled | §1, §9.4, §11, §15, §18 |
+| D16 validator admission (2026-09-20) | **`MsgCreateValidator` disabled in `x/circuit` genesis state**; ops multisig resets/disables around each admission; gov proposal removes it to go permissionless. No new module. Runbook: `infra/runbooks/validator-admission.md` (unrehearsed) | §11, §18 |
+| D12 shape (2026-09-20) | **team: 10 % liquid at genesis, 90 % 12-mo cliff + 36-mo linear**; community: **50 M pool seed in genesis `distribution` state**, 280 M in tranche wallets; genesis float 322 M (32.2 %) | `TOKENOMICS.md §7`, §11 |
+| D17 EVM fork (2026-09-21) | **Prague** — cosmos/evm's default; **Osaka not enabled** (0x100 p256 collision, untested upstream). Contracts recompiled with solc 0.8.37 / `evm_version = "prague"` on `vesting-d12` (`5fa5ee9`) — **bytecode byte-identical to 0.8.28/cancun, so no address moved**; WKASH stays `0x34Ab82…59bE`, 59/59 tests | §11 D17, `contracts/foundry.toml` |
+| Blockscout version (2026-09-20) | testnet-1 ships the pinned public images 9.0.2 / v2.3.5; re-decide for mainnet | §6.5, §18 |
 | cosmos/evm pin | **v0.7.3** (v0.7.2 has GHSA-367m-g444-9mg3) | §2.4, §3, §4.1 |
 | Go | `go 1.26.0` min, `toolchain go1.26.8` (1.25 is out of support) | §3 |
 | BlockSTM | OFF; **virtual fee collection also OFF** (same bundle) | §2.5, §7.3 |
 | feemarket `min_gas_multiplier` | **0.5**, explicit (PR #3, `21da290`) — upstream default, now a recorded decision | §3; `app/config/chain.go` |
 | Dependency: grpc | **v1.83.2** (PR #9, `2f3880e`, 2026-09-16) for GO-2026-6348 / -6441 / -6443, all reachable. `make vulncheck-binary` now builds with symbols so local matches CI | §4.1, §4.3 |
 | Chain-id invariant | **genesis.json decides the network; every per-node file is checked against it, in both directions** (a real network's EVM id is used only by that network) | §1 |
-| WKASH (was WKONS) | renamed 2026-09-15 to match the D2 token symbol; ships as a **post-genesis deploy**, not a genesis preinstall — see §1 | §6.3, §11 |
+| WKASH (was WKONS) | renamed 2026-09-15 to match the D2 token symbol; ships as a **post-genesis deploy**, not a genesis preinstall — see §1. **Address pinned 2026-09-20: `0x34Ab8285C63b876717C2c56151700D02623559bE`** (Create2Deployer + salt `keccak256("konstellation-network/contracts:WKASH:v1")`, `contracts` `vesting-d12`) | §6.3, §11 |
 | Genesis preinstalls (2026-09-15) | cosmos/evm's 5 defaults + `EntryPointV07`/`V08`, each with its `SenderCreator`, + `Create2Deployer` at canonical mainnet addresses — **merged, PR #4 (`dc1a4db`)**. Bytecode source of truth is `contracts/preinstalls/`; a preinstall never runs its constructor, so constructor-deployed companions must be preinstalled too | §6.1, §6.3; `app/preinstalls/` |
 
 ## 2a. Known problems — open
@@ -283,6 +411,22 @@ and produces a correct node. Specifically, in `konstellation`:
   Dropping either makes `getSenderAddress()` and every UserOp with `initCode`
   revert with empty data (`konstellation` PR #4 review; tests cover it).
 
+- **`contracts/src/vesting/*` revert on `release(address token)`** — deliberate.
+  cosmos/evm's `werc20` precompile (`0xD4949664…`) presents the native balance
+  as an ERC-20, so OZ `VestingWallet`'s stock ERC-20 path would let a
+  beneficiary withdraw the same KASH twice (native + "ERC-20"). Vesting is
+  native-KASH only; ERC-20s sent to a wallet are unrecoverable. Also
+  `renounceOwnership` reverts.
+- **`explorer` runs Blockscout with `ETHEREUM_JSONRPC_GETH_TRACE_BY_BLOCK=false`**
+  — not a tuning choice: cosmos/evm v0.7.3's `debug_traceBlockByNumber` returns
+  entries without `txHash` and Blockscout's block-level parser crashes on every
+  batch. Per-tx `debug_traceTransaction` works and is what the indexer uses.
+- **`contracts` compiles with bytecode metadata stripped** (`bytecode_hash =
+  "none"`, `cbor_metadata = false`) so a comment edit cannot move a CREATE2
+  address; only code / solc / optimizer / `evm_version` changes do, and
+  `test/DeployWKASH.t.sol` pins the address so such a change fails loudly.
+  Consequence: Blockscout source verification is a *partial* match.
+
 ## 4. Open decisions
 
 **None remaining.** Every numbered decision (D1–D13) is resolved as of 2026-09-15 —
@@ -290,8 +434,14 @@ see §2 above and `ENGINEERING.md §11` for the full record. What's left is *bui
 what D4/D5/D6/D9/D12 call for (§5), not deciding anything further.
 
 One non-numbered item still open: the on-call rota (§17) — the model (shared,
-any engineer, issue-driven, 1-working-day self-assign) is decided, but the rota
-itself waits until validators exist, per §17's own text.
+any engineer, issue-driven, 1-working-day self-assign) is decided, and the
+*mechanics* now exist (`infra/runbooks/on-call.md`, `close-known-gaps`), but the
+schedule itself waits until validators exist, per §17's own text.
+
+The 2026-09-20 parallel work surfaced a set of calls and doc inconsistencies;
+the founder settled the substantive ones the same day (D7 re-decided, D16 new,
+D12 shape, community pool, Blockscout) — see §2 and **§5a**, which also lists
+what is still pending (P1–P10).
 
 ## 5. Next steps, in order
 
@@ -345,8 +495,13 @@ itself waits until validators exist, per §17's own text.
      lifting brings the wallet back already initialised (storage intact).
      Verified to fail without the fix (2026-09-19: "frozen delegated EOA was
      drained").
-   - **D12 (vesting):** `contracts/src/vesting/` — Solidity vesting
-     contracts. Fully unblocked now; not started.
+   - ~~**D12 (vesting):** `contracts/src/vesting/`~~ **built 2026-09-20 on
+     `contracts` branch `vesting-d12`** (see §1). Owed: review + PR; the §5a
+     defaults confirmed (team-schedule reading, 365-day year, immutable
+     revoker/treasury, the TOKENOMICS §7 community-pool inconsistency); real
+     beneficiaries/amounts/TGE in `script/config/vesting.json` when known; a
+     `networks` CI check that genesis allocations at vesting-wallet addresses
+     equal `DeployVesting.s.sol predict()` output (new §5.2 row).
    - **D9 (audit):** start scoping calls with Informal Systems now (lead
      times run weeks to months) — but per §12, actually schedule the audit
      once Phase 3 + D6 are stable, not before. **Scope changed 2026-09-16:**
@@ -354,9 +509,11 @@ itself waits until validators exist, per §17's own text.
      ~1,550 hand-written consensus-critical lines (keeper, ante extractor,
      mempool pre-check, precompile) that must be in the statement of work,
      alongside `app/feeburn.go` and `app/issuance.go`.
-   - **D7/D8 (whitepaper):** the validator-decentralisation roadmap (D7) and
-     the bridge/value-ceiling sequencing (D8, recorded in `ENGINEERING.md §11`)
-     both need writing into `whitepaper`, which is currently `init`-only.
+   - ~~**D7/D8 (whitepaper):**~~ **drafted 2026-09-20 on `whitepaper` branch
+     `whitepaper-v1-draft`** (27 pp, see §1) including the D7 roadmap and D8
+     sequencing. Owed: the 19 `\todo{}` answers (§5a lists the load-bearing
+     ones), legal review of the compliance/disclaimer sections, review + PR,
+     then `make release VERSION=v1.0`.
 6. ~~Phase 3: `x/circuit` wired with multisig authority, IBC rate-limit middleware
    (§13)~~ **built 2026-09-19, merged 2026-09-20 as PR #12 (`a9051f6`)**. Not "just wiring" in the
    end: SDK 0.54 moved `x/circuit` to unmaintained `contrib/` (used anyway, D14), and
@@ -408,15 +565,56 @@ itself waits until validators exist, per §17's own text.
    in `README.md`/`ENGINEERING.md §5,§17` correcting the earlier wording. What's
    still open: each of the other repos needs its own committed `CODEOWNERS`,
    copied from this template — that's a task for a session scoped to that repo, not
-   this one. Done so far: `networks` (PR #1, merged 2026-09-16). (`ENGINEERING.md`, `CLAUDE.md`, `STATUS.md`, `wt` already live here;
+   this one. Done so far: `networks` (PR #1, merged 2026-09-16); **every other repo
+   on its 2026-09-20 branch** (`contracts`, `whitepaper`, `docs`, `chain-config`,
+   `faucet`, `infra`, `explorer`) — lands when those merge. Note `gh api
+   orgs/Konstellation-Network/members` now also lists `folajindayo` and `Signor1`,
+   who are in neither the template nor any copy — decide whether to add them
+   (§5a). (`ENGINEERING.md`, `CLAUDE.md`, `STATUS.md`, `wt` already live here;
    `bootstrap.sh` recreates the org dir.)
-10. `infra`: testnet-1 scaffold pushed (`0b011f4`), not yet a real deployment —
-    see `infra/README.md` "Known gaps". Not blocking
-    anything above; runs in parallel given terraform/ansible lead time. Before
-    a real `terraform apply`: pick the state backend, stand up a bastion +
-    monitoring host (neither has a terraform module yet), and fill in the
-    empty `konstellationd_version`/`*_sha256` vars once `konstellation` cuts a
-    release (waits on step 4-7 above).
+10. `infra`: testnet-1 scaffold pushed (`0b011f4`); ~~bastion + monitoring host,
+    dedicated cosigners, runbooks~~ **built 2026-09-20 on branch
+    `close-known-gaps`** (see §1), still not a real deployment. Before a real
+    `terraform apply`: review + PR the branch; pick the state bucket
+    (`backend.tf`); confirm the three topology defaults (§5a); fill the empty
+    `konstellandd_version`/`*_sha256` vars (now also `prometheus_sha256`,
+    `alertmanager_sha256`) once `konstellation` cuts a release (waits on step
+    8); on-call rota + `alert_*` vault values; a route from the explorer host
+    into a private network.
+
+## 5a. Decisions surfaced 2026-09-20 — settled and pending
+
+The parallel repo work surfaced these. The founder answered most the same day;
+the rest wait. **Network column:** which network the decision actually bites on
+(`ENGINEERING.md §18` is the authoritative matrix).
+
+**Settled 2026-09-20** (recorded in `ENGINEERING.md §11` / `TOKENOMICS.md §7`):
+
+| # | Decision | Outcome | Network |
+|---|---|---|---|
+| 1 | Community bucket: 30 M liquid vs 50 M pool seed | **50 M.** The community-pool seed is 50 M, written into genesis `distribution` state (module account — no key, gov-spend only, cannot be a vesting beneficiary). The other 280 M (grants 180 M, incentives 100 M) vests in non-revocable tranche wallets, 30/25/20/15/10 % per year. Genesis float is now 322 M (32.2 %). | mainnet economics; testnet-1 mirrors the *shape* with test addresses |
+| 2 | Team vesting shape | **10 % of each grant liquid at genesis** (plain balance), 90 % behind a 12-month cliff then linear 36 months; 365-day years; `revoker`/`treasury` immutable per wallet. | mainnet; testnet-1 mirrors the shape |
+| 3 | Validator set + "permissioned" mechanism (was D7 vs §9.4 contradiction) | **D7 re-decided: 10 validators at genesis, all foundation-run, `max_validators` 30, admission permissioned, opening up in stages by governance. D16: `MsgCreateValidator` disabled in `x/circuit` genesis state; the ops multisig resets/disables around each admission; a gov proposal removes it for good.** Same on both networks. §9.4, §15 phases 5–6, §18 reconciled. | **both, identically** |
+| 4 | Blockscout version | **Ship the pinned public images (9.0.2 / v2.3.5) on testnet-1; re-decide before the mainnet explorer** (public images lag source by two majors). The `explorer` repo is configuration for a Blockscout we host — there is no in-house explorer. | testnet-1 now; mainnet re-decides |
+| 5 | `CODEOWNERS` template missing two org members | **Tentative; leave the template as is.** | — |
+| 6b | NFT indexing + media handler | **Enabled (2026-09-21)**: Blockscout's `nft_media_handler` worker runs in the stack; needs object storage per network (P11). | both |
+| 6a | Faucet: where the KASH comes from | The faucet is a service holding one key; that key's address is a **genesis allocation on testnet-1 only**, funded from the "liquidity & public distribution" bucket (80 M test KASH, §18) — enough for 8 M requests at 10 KASH. No faucet exists on mainnet. | testnet-1 only |
+
+**Still pending** (defaults in the branches stand until answered):
+
+| # | Item | Default in place | Network |
+|---|---|---|---|
+| ~~P1~~ | ~~Foundation's share of the 10~~ **answered 2026-09-20: all 10 are foundation-run, both networks** → `infra` scales from 5 to 10 validators (being applied on `close-known-gaps`) | — | both |
+| P2 | Whitepaper `\todo`s: roadmap stage triggers/targets for opening the set; mainnet 3-of-5 ops multisig and compliance-authority signer sets; bridge design; bundler/paymaster operator; audit SoW dates; bounty platform; publishing entity; whether team beneficiaries are named | placeholders | mainnet (multisigs also have testnet dev-key stand-ins) |
+| P3 | Real team beneficiaries, amounts and TGE for `contracts/script/config/vesting.json` | example addresses | mainnet |
+| P4 | `infra` state bucket (`backend.tf`) | none — must be created and named before any `terraform apply` | testnet-1 first |
+| P5 | `infra` topology: per-cloud bastions vs one entry point; monitoring on GCP | per-cloud, GCP | testnet-1 first, mainnet inherits |
+| P6 | npm scope `@konstellation-network` + a LICENSE for the org (no repo has one) | package `"private": true` | both (publishing) |
+| P7 | Faucet amount and cooldown; captcha must be on before public | 10 KASH, 24 h, captcha off | testnet-1 only |
+| P8 | `docs` hosting/domain | `docs.konstellation.network` placeholder | both |
+| P9 | tenderduty (paging) is archived upstream — pick a maintained fork | tenderduty | mainnet (fine for testnet) |
+| P11 | NFT media storage: an S3-compatible bucket (R2/S3) with TLS + anonymous read per network, keys into `explorer/.env.<net>` `NFT_MEDIA_S3_*`; a pinning/paid IPFS gateway (ipfs.io rate-limits) | local MinIO only | testnet-1 first |
+| ~~P10~~ | ~~D16 admission runbook~~ **written** (`infra/runbooks/validator-admission.md`, `close-known-gaps` `7ae9164`); rehearsal is a §15 phase 5 item | — | both |
 
 ## 6. Tooling and locations
 
@@ -432,6 +630,17 @@ itself waits until validators exist, per §17's own text.
   running — `open -a Docker`), `make lint` / `lint-e2e`,
   `./local_node.sh -y` (dev chain, JSON-RPC :8545, metrics :26660, chain id 56670).
 - Dev mnemonics in `local_node.sh` are public; `dev0` = `0xC6Fe5D33615a1C52c08018c47E8Bc53646A0E101`.
+- `contracts`: `forge test`; `forge script script/DeployWKASH.s.sol` / `DeployVesting.s.sol`
+  (`predict()` prints addresses for genesis allocations). `chain-config`: `npm test`
+  (the §5.2 invariant needs `../contracts` and `../konstellation` present, or
+  `KONSTELLATION_CONTRACTS_DIR` / `KONSTELLATION_CHAIN_DIR`). `faucet`: `npm test`;
+  `FAUCET_PRIVATE_KEY=<dev0> RPC_URL=http://127.0.0.1:8545 CHAIN_ID=56670 npm start`.
+  `explorer`: `docker compose --env-file .env.local up -d` → http://localhost:3080
+  (needs a node on :8545 with `--pruning nothing` and the `debug` namespace on;
+  `.env.local` sets `COMPOSE_PROFILES=local-s3` so NFT thumbnails work at :3082).
+  `docs`: `npx docusaurus start --port 3002` (3000 is often taken by Docker).
+  `whitepaper`: `make pdf` (tectonic or latexmk), `make check`. `infra`: `tofu`
+  works in place of terraform for `fmt`/`validate`/credential-free `plan`.
 
 ## 7. How PR #1 was reviewed
 
