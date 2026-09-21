@@ -134,7 +134,13 @@ v2 `horcrux cosigner start` command), the ansible re-run that re-pointed
 routing over the tunnel (`Table = off` + src routes), Hetzner private hosts' route/DNS
 before apt, tenderduty perms + `[rpc] laddr` reconciled per role, bastion scrape
 targets, the always-firing `BlockTimeDrift`, and a controller-only
-`ansible/tests/render_test.yml` that asserts each. Still open: state bucket, topology
+`ansible/tests/render_test.yml` that asserts each. **Second pass + round 3
+(`f733b86`):** the render test was vacuous for three guards — it now imports the
+shipped role tasks and five documented mutations each fail it; a data-rebuild guard
+refuses to format a validator's data device while a consensus key exists (the §2.7
+residual: re-running `site.yml` after a wiped Local SSD); and the honest test caught
+Prometheus about to listen on CometBFT's 26660 (`prometheus_web_port`).
+Still open: state bucket, topology
 defaults (§5a P5, P15), version pins, on-call rota, and tenderduty is **archived
 upstream (2025-01-02)** — evaluate a maintained fork before mainnet.
 
@@ -259,7 +265,11 @@ the §2a restart panic; cutting one now would only be regenerated.
   broadcast per request with receipt wait (`200 confirmed` / `202` broadcast), local
   nonce counter (5 parallel → 5 × 200), rightmost validated XFF hop, IPv6 keyed by /64,
   `application/json` + same-origin required, digest-pinned image, history-walking
-  secret scan.
+  secret scan. **Second pass + round 3 (`12692fa`, 92 tests):** the first fix
+  introduced a lockout (a node-answered `nonce too low` kept the cooldown with no
+  payout) — now an in-request resync + retry, 3 s hash-lookup polling on transport
+  loss, origin check works behind a Host-rewriting proxy (`PUBLIC_ORIGIN`), Redis
+  client behind a Docker build-arg. Two instances sharing one key: 8/8 confirmed.
 - **`explorer`** — `scaffold-blockscout` (2 commits): one `docker-compose.yml`
   for all networks selected by `--env-file` (`.env.local` concrete; testnet-1 /
   konstellation-1 all `TODO-*`, CI enforces they stay placeholders); every image
