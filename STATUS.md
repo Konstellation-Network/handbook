@@ -1,7 +1,16 @@
 # Konstellation — Status & Handoff
 
-**Updated:** 2026-09-20 (evening) — **seven non-chain repos advanced in parallel,
-each on an unpushed local branch, no PRs yet** (see §1 per repo and §5a for the
+**Updated:** 2026-09-22 — **six of the seven non-chain PRs merged** after three review
+passes each (review → fix, second review on infra/faucet → fix, adversarial review →
+fix): contracts #2 (`4cc909a`), whitepaper #1 (`dea2c8e`), docs #1 (`b3b63bc`),
+faucet #1 (`a4dd1cd`), infra #1 (`1eae435`), explorer #1 (`5de9f60`). **chain-config
+#1 still open** (CI green now that `CONTRACTS_READ_TOKEN` exists; merge, then drop
+the `ref: vesting-d12` line from its CI). The adversarial pass surfaced chain-level
+findings that are now the critical path — see §5a **P12, P17, P18, P20, P24, P26,
+P27** (all `konstellation`) and the infra architecture decisions **P16, P21–P23**.
+Feature branches kept (not deleted) by request.
+Earlier — 2026-09-20 (evening) — seven non-chain repos advanced in parallel,
+each on an unpushed local branch (see §1 per repo and §5a for the
 decisions they surfaced): `contracts` D12 vesting + WKASH pinned at
 `0x34Ab8285C63b876717C2c56151700D02623559bE` (`vesting-d12`), `whitepaper` v1.0
 draft, 27 pp (`whitepaper-v1-draft`), `docs` four pages filled (`fill-docs-pages`),
