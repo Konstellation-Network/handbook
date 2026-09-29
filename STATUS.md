@@ -8,11 +8,11 @@ validators, was 10). Upgrade order testnet-1 → devnet-1 → mainnet. The 4 mus
 in four separate failure domains; which ones is open (P16). **PRs open
 2026-09-30, branch `devnet-network` everywhere, not yet reviewed:**
 konstellation #17 (devnet-1 ↔ 56672 known and replay-protected in
-`app/config/chain.go`), networks #2, infra #2, chain-config #3, explorer #2,
+`app/config/chain.go`) **merged 2026-09-30 (`058942e`)**, networks #2, infra #2, chain-config #3, explorer #2,
 faucet #2, docs #3, whitepaper #2, and `.github` (these docs). Next for devnet
 (§15 phase 4b): review and merge those PRs → the first signed release tag
 (already next on the testnet path) → cut `networks/devnet-1/genesis.json` →
-`terraform apply` the devnet-1 env (still needs the P4 state bucket). **Merge order:** `konstellation` first — `chain-config`'s CI checks `konstellation` main for the devnet constants, and `docs` describes that binary behaviour.
+`terraform apply` the devnet-1 env (still needs the P4 state bucket). **Merge order:** `konstellation` first (done) — `chain-config` #3 CI re-run green after it; whitepaper #2 CI blocked by private-repo billing until the 2026-10-01 quota reset.
 
 **2026-09-29 — GitHub Actions is out of minutes.** The org is on the Free plan with
 private repos (2 000 min/month); September's were all used by `konstellation`
