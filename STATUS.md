@@ -1,5 +1,49 @@
 # Konstellation — Status & Handoff
 
+**2026-09-29 — GitHub Actions is out of minutes.** The org is on the Free plan with
+private repos (2 000 min/month); September's were all used by `konstellation`
+(about 48 min per PR push, plus `upstream-watch` every 6 h), and without a
+payment method jobs are refused ("recent account payments have failed"). The
+quota should reset on 2026-10-01. The Free plan gives private repos **no branch
+protection**, so red checks do not block merges. Until the quota resets or a
+runner is added, **CI runs locally**: the `ci.yml`/`vuln.yml` steps with
+`GOTOOLCHAIN=go1.26.8`, plus `make docker-build test-e2e`, with the results
+posted as a PR comment. Done that way on 2026-09-29 for konstellation
+#13/#14/#15 and new **#16** (otel bump for **GO-2026-6508**, published
+2026-09-28; it failed `vuln/binary` on `main` and every PR), docs #2 and
+chain-config #2. Every check passed, including a combined `main`+#16+#13+#14+#15
+branch with 7/7 e2e tests. The #14 e2e failure was the test re-sending a
+byte-identical tx (`tx already seen`); fixed in `3b09d25`. **All four merged
+2026-09-29, each green on GitHub CI first:** #16 `4935d59` → #13 `1b2ccab` →
+#14 `25e7d94` → #15 `06f9ebe`. #15's `README.md` conflict with #14 was
+resolved by keeping both sections; the merged tree is identical to the tested
+combined branch. docs #2 and chain-config #2 are still open and green. Build
+provenance: `actions/attest-build-provenance` on a
+private repo likely needs GitHub Enterprise Cloud, so check that before the
+first tag.
+**Later on 2026-09-29, the founder made eight repos public** so that Actions
+runs free: `konstellation`, `contracts`, `networks`, `explorer`, `docs`,
+`whitepaper`, `chain-config` and `faucet`. The intent is to make them private
+again later. `whitepaper` was made private again the same day; it was public
+for about an hour and has no forks. Its small CI job counts against the
+private-repo minutes again. `infra`, `.github`, `waitlist` and `privacy-lab`
+stay private.
+The full history of all eight was scanned first (gitleaks plus a filename and
+token-format pass): no secrets. The only hits were the public upstream dev0
+key, the RFC 6455 sample WebSocket nonce, and the local-only or `TODO` values
+in `explorer/.env.*`. Every public repo requires approval before a fork PR's
+workflows run (`approval_policy = all_external_contributors`). **Before going
+private again:** anything published while public is permanent, including
+forks, clones and, if a release tag is pushed, the Sigstore log entry for the
+build provenance. Branch protection is available on public repos but has not
+been set.
+**Next, toward testnet-1 (§5 item 8):** (1) P28: `gen-genesis.sh` writes the
+circuit super-admin, plus a `verify.sh` assertion, in `networks`; (2) the first
+signed release tag. #13's `release.yml` is on `main` but has never run, so
+decide first whether a provenance entry in the public Sigstore log is
+acceptable while `konstellation` is public. Then record the tag in
+`networks/RELEASES.md` and cut `testnet-1/genesis.json`.
+
 **Updated:** 2026-09-22 — **six of the seven non-chain PRs merged** after three review
 passes each (review → fix, second review on infra/faucet → fix, adversarial review →
 fix): contracts #2 (`4cc909a`), whitepaper #1 (`dea2c8e`), docs #1 (`b3b63bc`),
@@ -421,7 +465,7 @@ the §2a restart panic; cutting one now would only be regenerated.
 |---|---|---|---|
 | 2026-09-15 | **A restarted node panics on its first EVM tx.** `panic: module account  does not exist: unknown address` from `x/vm` `DeductTxCostsFromUserBalance` in the EVM mempool recheck, on the first `eth_sendRawTransaction` after `konstellationd start` on existing state. | **Root-caused and fixed — konstellation PR #8, merged `642e7b3` 2026-09-16.** `x/vm` routes EVM fees via the SDK's `authante.DeductFees` → `authante.FeeRecipientModule`, a package global that is `""` until `NewDeductFeeDecorator` runs; cosmos/evm v0.7.3 builds its Cosmos ante chain lazily per tx, so the global is only set after the first *Cosmos* tx in the process. Fresh chains get that from InitChain's gentxs; restarts don't. Proven on the unpatched binary: one Cosmos tx after restart makes the EVM tx succeed. Fix: pin the global in `setAnteHandler`. 3/3 restarts now survive. The startup log `failed to initialize rechecker context … invalid height` is a separate self-healing race, not the cause. Upstream: **cosmos/evm#1288** (https://github.com/cosmos/evm/issues/1288, filed 2026-09-15). Our fix does not depend on it. | was blocking testnet-1; **fixed — PR #8 merged `642e7b3`, 2026-09-16** |
 | 2026-09-21 | **`infra/runbooks/coordinated-upgrade.md` rollback section would tombstone the entire validator set**: "restore `data/` from the H−1 snapshot, do not touch `priv_validator_state.json`" — the state file is *inside* `data/`; validators have already precommitted block H when the upgrade handler panics, so a restored set re-runs consensus at H and double-signs. | Correct recovery for a failed handler is `--unsafe-skip-upgrades H` on the old binary, never a data restore; if `data/` is ever restored, re-place the current state file. Rewrite before the phase-5 drill. Fix in flight on `close-known-gaps`. | **open — critical (runbook)** |
-| 2026-09-21 | **Frozen address can still be drained via a pre-freeze allowance on the werc20 precompile, and funded by any contract call.** `x/compliance` enforces at the ante (signers + tx `to`), not at bank level; precompiles move balance directly. Reproduced (see §5a P20). | Needs a bank `SendRestriction` keyed on the block list, or precompile wrapping. Not blocking testnet-1; **must close before mainnet** (D6 semantics as documented to exchanges are wrong until then). | **fixed — PR #15 (`402a921`), pending merge** |
+| 2026-09-21 | **Frozen address can still be drained via a pre-freeze allowance on the werc20 precompile, and funded by any contract call.** `x/compliance` enforces at the ante (signers + tx `to`), not at bank level; precompiles move balance directly. Reproduced (see §5a P20). | Needs a bank `SendRestriction` keyed on the block list, or precompile wrapping. Not blocking testnet-1; **must close before mainnet** (D6 semantics as documented to exchanges are wrong until then). | **fixed — PR #15, merged `06f9ebe` 2026-09-29** |
 | 2026-09-15 | Fee collector `Burner` permission is stored on the module account at creation. A network that ever ran a binary without it (or a genesis exported from one) will panic in `BurnCoins` at the first EndBlock with gas used after upgrading to PR #5. | Not a problem for testnet-1 or mainnet, which start on a post-PR-#5 binary. Recorded so the first real upgrade handler pattern includes "rewrite module account permissions" if it ever applies. | note |
 
 ## 3. Things that are deliberate and easy to mistake for bugs
@@ -834,3 +878,42 @@ git-clone → GitHub-API rewrite mid-review (round 3) once the local clone was
 flagged as unnecessary CI cost; commit dates, commit log, and the hot-zone
 diff stat now come from the GitHub commits/compare APIs, with an explicit
 warning if the compare API's 300-file cap is ever hit.
+
+## 9. How PR #13 (release workflow) was reviewed — 2026-09-22
+
+`/code-review` against `release-workflow`. Four findings, all fixed in that
+branch. Three are worth carrying forward because they are not visible in the
+final diff:
+
+- **`actions/checkout@v4` destroys annotated tags.** On a tag push `github.sha`
+  is the *commit* SHA, so checkout's `testRef()` compares it against
+  `git rev-parse refs/tags/<tag>` (the *tag object* SHA), never matches, and
+  re-fetches `+<commit>:refs/tags/<tag>` — rewriting the annotated tag into a
+  lightweight one in the workspace (actions/checkout#290; fixed only on v5).
+  Any workspace `git cat-file -t`/`git rev-parse` on a pushed tag is therefore
+  wrong. `release.yml` asks the GitHub API instead. Do not "simplify" it back
+  to git.
+- **The release binary must be built in bookworm** (ENGINEERING.md §3, new
+  row). CGO is on and nothing static-links, so building on the ubuntu-24.04
+  runner links against glibc 2.39 while the fleet is debian-12/glibc 2.36 —
+  a release that goes green and then bricks every validator at the upgrade
+  height. It runs as `docker run` rather than a job-level `container:`
+  deliberately: the "Free disk space" step is a host step, and without it the
+  link runs the runner out of space (`ci.yml`, 2026-09-20). Note that
+  `make verify-deps` stays on the host — `golang:1.26-bookworm` ships no jq.
+  `BUILD_IMAGE` is a **digest**, not that tag: the tag moves on every Go patch
+  and Debian rebuild, and if it moved between the two matrix builds the
+  release would fail as "non-reproducible" with nothing actually wrong. It is
+  bumped by hand — see RELEASING.md's pre-tag checklist.
+- **`SHA256SUMS` is now checked against the bytes being published**, not just
+  against the other runner's string. That file is what `networks/RELEASES.md`
+  and `infra`'s `konstellationd_sha256` are copied from, so a bad artifact
+  round-trip would have broken verification for every operator after the fact.
+
+The fourth was a doc slip: `RELEASING.md` said `upgrades/<version>.md`; the
+convention is `upgrades/v<N>-<name>.md`, `<name>` being the
+`MsgSoftwareUpgrade` plan name (`networks/templates/upgrade.md`, §6.2).
+
+Still unverified end to end: no signed tag has been pushed through the
+workflow yet. The first real tag is the proof — watch the `tag` job and the
+`debian:12` smoke-run specifically.

@@ -120,6 +120,7 @@ Current target stack (the Cosmos "2026.1" release family):
 | `github.com/cometbft/cometbft` | v0.39.3 | |
 | `github.com/cosmos/ibc-go/v11` | v11.x | |
 | go-ethereum | v1.17 via Cosmos fork | applied through `replace` |
+| Release build / target OS | built in `golang:1.26-bookworm` (glibc 2.36), **pinned by digest** (`sha256:a688600c…`), asset smoke-run in `debian:12` before publish | CGO is on and nothing static-links, so the artifact carries its build image's glibc. `infra/terraform` provisions debian-12; building on the runner's own Ubuntu (glibc 2.39) yields a binary that starts nowhere on the fleet. Pinned as `BUILD_IMAGE`/`TARGET_IMAGE` in `konstellation/.github/workflows/release.yml`; the same base as that repo's `Dockerfile`. Move both if `infra` moves the fleet. The digest is bumped by hand, with the Go toolchain row or to take a Debian security rebuild — `docker buildx imagetools inspect golang:1.26-bookworm`. |
 
 Prior generation, for reference only — do not target: cosmos/evm v0.6.x runs on
 Go 1.23, SDK v0.53.x, CometBFT v0.38.x, ibc-go v10, geth v1.15.
