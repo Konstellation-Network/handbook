@@ -124,6 +124,7 @@ Current target stack (the Cosmos "2026.1" release family):
 | `github.com/cometbft/cometbft` | v0.39.3 | |
 | `github.com/cosmos/ibc-go/v11` | v11.x | |
 | go-ethereum | v1.17 via Cosmos fork | applied through `replace` |
+| OpenTofu | **1.12.x** (1.12.6 used for every infra check to date) | `infra/terraform/**/versions.tf` still says `required_version >= 1.9.0`; tighten it to the pinned minor with the first apply (§9.1). |
 | Release build / target OS | built in `golang:1.26-bookworm` (glibc 2.36), **pinned by digest** (`sha256:a688600c…`), asset smoke-run in `debian:12` before publish | CGO is on and nothing static-links, so the artifact carries its build image's glibc. `infra/terraform` provisions debian-12; building on the runner's own Ubuntu (glibc 2.39) yields a binary that starts nowhere on the fleet. Pinned as `BUILD_IMAGE`/`TARGET_IMAGE` in `konstellation/.github/workflows/release.yml`; the same base as that repo's `Dockerfile`. Move both if `infra` moves the fleet. The digest is bumped by hand, with the Go toolchain row or to take a Debian security rebuild — `docker buildx imagetools inspect golang:1.26-bookworm`. |
 
 Prior generation, for reference only — do not target: cosmos/evm v0.6.x runs on
@@ -722,11 +723,19 @@ mempool, the default is `"flood"`, and the node errors out at startup otherwise.
 
 | Tool | Job |
 |---|---|
-| **Terraform** | Provisions cloud resources: VMs, disks, firewall rules, DNS. Works across AWS, Hetzner, GCP, Vultr from one codebase. |
+| **OpenTofu** (`tofu`) | Provisions cloud resources: VMs, disks, firewall rules, DNS. Works across AWS, Hetzner, GCP, Vultr from one codebase. The code is Terraform HCL under `infra/terraform/`; "terraform" elsewhere in these docs means this layer, and the command is `tofu`. |
 | **Ansible** | Configures servers that already exist: installs the binary, writes `config.toml`, sets up systemd and Cosmovisor. |
 | **Coolify / k8s** | Stateless app tier only: explorer, faucet, docs, indexers, bundler, RPC fleet. |
 
-Terraform builds the house, Ansible furnishes it. Both are required.
+OpenTofu builds the house, Ansible furnishes it. Both are required.
+
+**Decided 2026-09-30: OpenTofu, not HashiCorp Terraform,** for every `plan` and
+`apply` against a real network. OpenTofu is the open-source fork (Linux
+Foundation, MPL-2.0) made after Terraform moved to the BSL in 2023; it is what is
+installed and what every infra check so far has run. The two read the same HCL
+today, but a state file written by one is not guaranteed to stay readable by the
+other as they diverge, so each network's state is only ever touched by `tofu`.
+Pin the version alongside the state bucket (STATUS P4) before the first apply.
 
 **Do not run validators on Coolify or Kubernetes.** Validators need host-level
 control (local NVMe tuning, systemd semantics, kernel networking) and strict
