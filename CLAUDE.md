@@ -32,7 +32,7 @@ remote. The org directory itself is not a git repo. Extra worktrees live under
 - Open decisions (`ENGINEERING.md §11`) are not yours to make. If a task depends on
   one, stop and ask.
 - Testnet-only or mainnet-only? Say so, and add the row to `ENGINEERING.md §18` in
-  the same change. One binary serves both networks; differences live only in
+  the same change. One binary serves every network (devnet-1, testnet-1, konstellation-1); differences live only in
   `networks/<net>/genesis.json` and `infra/`.
 
 ## Where things live

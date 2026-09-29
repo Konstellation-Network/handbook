@@ -145,7 +145,7 @@ of demand for blockspace, issuance a function of security budget.
 | Downtime slash | **0.01 %** of stake |
 | Downtime definition | miss > 50 % of a 100-block window (SDK default) |
 | Downtime jail | 10 minutes, then unjail tx (SDK default) |
-| Launch validator set | **10 foundation-run validators at genesis, `max_validators` 30, further admission permissioned** (D7, re-decided 2026-09-20; mechanism D16) — same on testnet-1 and mainnet |
+| Launch validator set | **4 foundation-run validators at genesis, `max_validators` 30, further admission permissioned** (D7, re-decided 2026-09-29; mechanism D16) — same on testnet-1 and mainnet; devnet-1 runs 1 (D18) |
 
 Slashed stake is burned. Code: `app/config/chain.go`, `app/app.go`.
 
@@ -203,7 +203,7 @@ and a treasury. Confirmed as proposed. On a 1,000,000,000 KASH supply:
 | **Founding team & early contributors** | **22 %** | 220 M | **22 M (10 % of each grant)** | remaining 90 %: 12-month cliff, then linear over 36 months (4 years total) — decided 2026-09-20 | liquid part paid to each member's address in genesis; locked part in a D12 revocable vesting wallet, one per person |
 | **Community & developers** | **33 %** | 330 M | **50 M** (the community-pool seed, decided 2026-09-20) | remaining 280 M released over 5 years, front-loaded | see split below |
 | **Treasury (foundation)** | **25 %** | 250 M | 50 M | 20 % liquid at genesis, remainder linear over 48 months | foundation multisig (≥ 3-of-5); vesting contract for the locked part |
-| **Validator bootstrap & staking** | **12 %** | 120 M | 120 M, bonded | none — bonded at genesis via gentx | the foundation, as operator of all 10 launch validators (D7) |
+| **Validator bootstrap & staking** | **12 %** | 120 M | 120 M, bonded | none — bonded at genesis via gentx | the foundation, as operator of all 4 launch validators, 30 M each (D7) |
 | **Liquidity & public distribution** | **8 %** | 80 M | 80 M | none | foundation, earmarked (DEX liquidity, market makers, any public sale) |
 | | **100 %** | 1 000 M | **322 M (32.2 %)** | | |
 
