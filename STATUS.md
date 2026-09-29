@@ -17,7 +17,7 @@ byte-identical tx (`tx already seen`); fixed in `3b09d25`. **All four merged
 2026-09-29, each green on GitHub CI first:** #16 `4935d59` → #13 `1b2ccab` →
 #14 `25e7d94` → #15 `06f9ebe`. #15's `README.md` conflict with #14 was
 resolved by keeping both sections; the merged tree is identical to the tested
-combined branch. docs #2 and chain-config #2 are still open and green. Build
+combined branch. docs #2 (`0bb6939`) and chain-config #2 (`96915c1`) were merged the same day. **No PR is open in any repo.** Build
 provenance: `actions/attest-build-provenance` on a
 private repo likely needs GitHub Enterprise Cloud, so check that before the
 first tag.
