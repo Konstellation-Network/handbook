@@ -1,5 +1,27 @@
 # Konstellation — Status & Handoff
 
+**2026-09-30 — new repo `website`: the marketing site (Astro 7, static).** Public at
+https://github.com/Konstellation-Network/website (private vulnerability reporting
+on); no hosting yet. Built from the Claude Design canvas "Konstellation website"
+(https://claude.ai/artifact/UuVTaESSGRPe6Gnv5DTiqU). **Founder decision: light is
+the default for every visitor, whatever their OS setting**; dark only via the
+header toggle (stored in `localStorage` `k-theme`). The design's note "dark
+follows the system setting" is superseded; there is deliberately no
+`prefers-color-scheme` query. Fonts are self-hosted (@fontsource), no Google
+Fonts requests. On `main`: all 14 pages of the design (Home, Solutions, Compliance,
+Security, the Developers section incl. Scriipture, Network, Ecosystem, Contact). The Contracts page
+mirrors `chain-config/src/contracts.ts`: update both together. The faucet form
+calls the `faucet` service's `POST /request` directly: set `PUBLIC_FAUCET_URL`
+at build time and add the site's origin to the faucet's `ALLOWED_ORIGINS`. The
+captcha provider (P7) is not wired into the form yet; do it when P7 is decided.
+Open before launch: the Contact and grants
+forms have no backend (`PUBLIC_CONTACT_URL`, `PUBLIC_GRANTS_URL`); the site
+says the npm package `scriipture` is unpublished, but P31(a) (owner
+`tsionark`) decides that. **Handbook conflict found while writing the site:**
+D8 (re-decided 2026-09-15) drops the launch value ceiling for "no bridge on
+day one", but §15 phase 9 and the §18 table still say "with a value ceiling";
+the site follows D8 (soak period first, no bridge on day one).
+
 **2026-09-30 — `.github` renamed to `handbook`; new public `.github` for the org profile.**
 GitHub shows an org profile README only from `profile/README.md` in a *public*
 `.github` repo, and ours held ENGINEERING/STATUS/TOKENOMICS. So the private repo was
