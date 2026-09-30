@@ -895,7 +895,7 @@ the rest wait. **Network column:** which network the decision actually bites on
 | P3 | Real team beneficiaries, amounts and TGE for `contracts/script/config/vesting.json` | example addresses | mainnet |
 | P4 (devnet-1: local state on the founder's PC, decided 2026-09-30; a bucket is still required before testnet-1) | `infra` state bucket (`backend.tf`) | devnet-1: local state (pending switch in `infra`); testnet-1/mainnet: none — must be created and named before their first `tofu apply` | testnet-1 first |
 | P5 | `infra` topology: per-cloud bastions vs one entry point; monitoring on GCP | per-cloud, GCP | testnet-1 first, mainnet inherits |
-| P6 | npm scope `@konstellation-network` + a LICENSE for the org (no repo has one) | package `"private": true` | both (publishing) |
+| P6 | npm scope `@konstellation-network` + a LICENSE for the org. **Licenses done 2026-09-30 (D19):** LICENSE PRs konstellation #18, networks #4, contracts #3, chain-config #5, docs #5, whitepaper #4, explorer #4, faucet #3; trademark policy `.github` #2. **Still open:** form the legal entity; counsel reviews `legal/CLA-draft.md` + trademark filings for "Konstellation"/"KASH"; then fill the entity into LICENSE holders/TRADEMARKS.md and enable the CLA workflow. npm scope unclaimed. | package `"private": true`; CLA not in force | both (publishing) |
 | P7 | Faucet amount and cooldown; captcha must be on before public | 10 KASH, 24 h, captcha off | devnet-1, testnet-1 |
 | P8 (interim 2026-09-30: `<ip>.sslip.io` hostnames for devnet RPC/faucet/explorer until a domain is bought) | `docs` hosting/domain | `docs.konstellation.network` placeholder | both |
 | P9 | tenderduty (paging) is archived upstream — pick a maintained fork | tenderduty | mainnet (fine for testnet) |
