@@ -301,10 +301,12 @@ konstellation-network/
 ├── faucet                 ← testnet token faucet. Public. (pre-mainnet)
 ├── Scriipture             ← TypeScript DSL → Solidity compiler + CLI (npm `scriipture`). Public.
 ├── handbook               ← ENGINEERING/STATUS/TOKENOMICS, wt, CODEOWNERS
-│                            template, shared workflows. PRIVATE. (was `.github`
+│                            template. PRIVATE. (was `.github`
 │                            until 2026-09-30; CODEOWNERS itself is per-repo —
 │                            GitHub has no org-wide default for it; see §17.)
-└── .github                ← org profile README + org-default SECURITY.md.
+└── .github                ← org profile README + org-default SECURITY.md, and
+                             shared reusable workflows if we add any (a public
+                             repo cannot call one stored in a private repo).
                              PUBLIC: GitHub shows `profile/README.md` only from a
                              public `.github`, so nothing internal lives here.
 ```
