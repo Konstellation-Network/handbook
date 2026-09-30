@@ -207,6 +207,13 @@ and a treasury. Confirmed as proposed. On a 1,000,000,000 KASH supply:
 | **Liquidity & public distribution** | **8 %** | 80 M | 80 M | none | foundation, earmarked (DEX liquidity, market makers, any public sale) |
 | | **100 %** | 1 000 M | **322 M (32.2 %)** | | |
 
+The x/circuit super admin must hold a genesis balance, or it has no account and
+cannot sign an admission window or an emergency trip (`networks` #3, 2026-09-30).
+The devnet-1 and testnet-1 example allocations carve **1 000 KASH** for it out of
+the treasury row (treasury 249 999 000 + admin 1 000). Bucket totals and the 322 M
+liquid figure are unchanged. Mainnet's funding for the operations multisig is to
+be confirmed with its allocation list.
+
 Community & developers, 33 %, split:
 
 | Sub-bucket | Share | KASH | At genesis | Purpose | Steward |
