@@ -35,6 +35,7 @@ conservative by default.
 | Testnet network id | `testnet-1` | decided |
 | Mainnet network id | `konstellation-1` | decided |
 | Token symbol | KASH | decided 2026-09-13 (D2) |
+| Token name | KASH (same as the symbol; `nativeCurrency.name` in chain-config, chainlist, wallet prompts) | decided 2026-09-30 (founder) |
 | Base denom | `esp` (18 decimals; 1 KASH = 10^18 esp) | decided 2026-09-13 (D2) |
 | Bech32 prefix | `kons` | decided 2026-09-13 (D3) |
 | EIP-155 chain ID, mainnet | **5667** | decided 2026-09-13 (D1) |
