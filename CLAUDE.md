@@ -51,4 +51,5 @@ find something the next agent must know. Convert relative dates to absolute.
 | `whitepaper` | versioned PDF releases |
 | `chain-config` | npm package for dapp developers |
 | `faucet` | testnet token faucet |
+| `Scriipture` | TypeScript DSL that compiles to Solidity (npm `scriipture`, CLI + 9-gate verify pipeline) |
 | `.github` | org-wide CODEOWNERS and shared workflows |
