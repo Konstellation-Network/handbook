@@ -13,11 +13,35 @@ servers:**
 3. archive + explorer + faucet + monitoring.
 
 Each VPS has a public IP and one disk, so host firewalls are the only
-network control. In progress on 2026-09-30:
-- `infra`: a devnet-1 Contabo inventory; role changes for shared hosts, a
-  single disk and no NAT; retire `terraform/envs/devnet-1` (Hetzner); the
-  admission-runbook half of P28.
-- `networks`: a devnet key and genesis script run on the founder's PC.
+network control. **Built and merged 2026-09-30:**
+- `infra` #3 (`0a5535c`): a hand-written devnet-1 Contabo inventory;
+  multi-role hosts, where a host gets the union of its groups' firewall
+  rules; `single_disk` and `private_network: false` modes, with every
+  default keeping testnet-1 unchanged; a new `state_guard` (a validator key
+  without `priv_validator_state.json` stops `site.yml`); `bootstrap.yml`
+  for a fresh VPS; `terraform/envs/devnet-1` (Hetzner) retired; the
+  admission runbook's half of P28. The README's plan table uses Contabo's
+  current catalogue: validator on **Cloud VDS M** (dedicated cores, §9.2),
+  server 2 on **Cloud VPS 8**, server 3 on **Cloud VPS 12**; the panel
+  names match the inventory hostnames `devnet-1-contabo-validator-v1`,
+  `-sentry-rpc-1` and `-archive-mon-1`.
+- `networks` #5 (`91ed99e`): `scripts/devnet-keys.sh` creates the 8 devnet
+  keys in a password-protected `file` keyring outside any repo and runs the
+  whole ceremony. It refuses, before any key exists, inputs that
+  `genesis validate` accepts but InitChain rejects. By default 1 000 KASH of
+  the validator row stays liquid. `scripts/devnet-faucet-key.sh` installs
+  the faucet key into the faucet env file. It must be run at a real
+  terminal: the SDK buffers stdin, so piped passwords fail.
+**Next for devnet-1, in order:**
+1. the founder's first signed release tag;
+2. order the three Contabo servers;
+3. `devnet-keys.sh` with the release binary, then the genesis PR in `networks`;
+4. `bootstrap.yml`, then `site.yml` per the `infra` README;
+5. the explorer and faucet on server 3. Docker-published ports bypass ufw,
+   which is the only firewall there.
+
+Open: `GENESIS_TIME`; P7 (faucet captcha and payout); faucet balance (the
+whole 80 M row vs tranches).
 
 **2026-09-30 — new repo `website`: the marketing site (Astro 7, static).** Public at
 https://github.com/Konstellation-Network/website (private vulnerability reporting
@@ -941,7 +965,7 @@ the rest wait. **Network column:** which network the decision actually bites on
 | P9 | tenderduty (paging) is archived upstream — pick a maintained fork | tenderduty | mainnet (fine for testnet) |
 | P11 | NFT media storage: an S3-compatible bucket (R2/S3) with TLS + anonymous read per network, keys into `explorer/.env.<net>` `NFT_MEDIA_S3_*`; a pinning/paid IPFS gateway (ipfs.io rate-limits) | local MinIO only | testnet-1 first |
 | ~~P27~~ (done PR #14 `3243793`: cause is cosmos-sdk v0.54.3 `server/util.go bindFlags` flattening TOML arrays into one-element slices — not cosmos/evm `checkOrigin`; repaired in `cmd/konstellationd/cmd/flags.go`, drop when fixed upstream; README tells dapp devs to list hosts) | `konstellation` JSON-RPC WebSocket: with `ws-origins = ["127.0.0.1", "localhost"]` an upgrade carrying `Origin: http://localhost` or `http://127.0.0.1` gets **403** while a request with no `Origin` passes (explorer review, dev node). Either the running node's allowed-origins slice is not what app.toml says (flag/TOML-array parsing) or `checkOrigin` compares differently; browser dapps using `eth_subscribe` over WS would be refused. Reproduce and fix or document. | open | both |
-| **P28** (built 2026-09-30: `networks` #3, **open, not yet merged** — `--circuit-admin`, admin allocation required, `verify.sh` assertion, live-node tested; the `infra` admission-runbook half is still open) | **`networks/scripts/gen-genesis.sh` must write the circuit super-admin** (`app_state.circuit.account_permissions` = the ops multisig / dev key with `LEVEL_SUPER_ADMIN`) — today a script-cut genesis closes the `MsgCreateValidator` gate with no admin, so every admission or emergency trip would first need a governance proposal (3 d mainnet). Add a `--circuit-admin <bech32>` step required with `--gentxs`, and a `verify.sh` assertion (list == [MsgCreateValidator], ≥ 1 super-admin). Also update `infra/runbooks/validator-admission.md` for the real window shape (reset N → create N+1 → disable; never broadcast the pre-signed file before `query tx <reset>` shows a height; re-sign if refused). | `networks` #3 open | both |
+| ~~P28~~ (done 2026-09-30: `networks` #3 merged `bfd0c4d`; the admission runbook's half in `infra` #3 `0a5535c` — `--circuit-admin`, admin allocation required, `verify.sh` assertion, live-node tested; both halves done) | **`networks/scripts/gen-genesis.sh` must write the circuit super-admin** (`app_state.circuit.account_permissions` = the ops multisig / dev key with `LEVEL_SUPER_ADMIN`) — today a script-cut genesis closes the `MsgCreateValidator` gate with no admin, so every admission or emergency trip would first need a governance proposal (3 d mainnet). Add a `--circuit-admin <bech32>` step required with `--gentxs`, and a `verify.sh` assertion (list == [MsgCreateValidator], ≥ 1 super-admin). Also update `infra/runbooks/validator-admission.md` for the real window shape (reset N → create N+1 → disable; never broadcast the pre-signed file before `query tx <reset>` shows a height; re-sign if refused). | done | both |
 | ~~P26~~ (done `c1f1337` on PR #13) | `konstellation/RELEASING.md` and the release-notes text in `release.yml` verify provenance with `gh attestation verify --owner Konstellation-Network`, which accepts a build attested from **any** org repo. Change to `--repo Konstellation-Network/konstellation --signer-workflow Konstellation-Network/konstellation/.github/workflows/release.yml` (docs already say so). Small; fold into the release-workflow PR. | `--owner` | both |
 | ~~P24~~ (done PR #14 `8605e79`: 0x…0803 dropped from `ActiveStaticPrecompiles`, 10 active; `docs/contracts.md:86` still lists vesting — docs follow-up) | **Genesis marks the `vesting` precompile (`0x…0803`) active but cosmos/evm v0.7.3 ships no implementation** — every call/tx to it fails with `precompiled contract not stored in memory` (adversarial chain-config review 2026-09-21). Drop it from `ActiveStaticPrecompiles` in `konstellation/app/genesis.go` (and from chain-config/docs), or document it as inert. | listed active | both |
 | **P25** | **Register EIP-155 ids 5667 / 56671 / 56672 (devnet, D18) at `ethereum-lists/chains` now** (D1 said "before testnet"; still absent 2026-09-21 — wallets warn, and nobody else must take them) and **claim the npm org `@konstellation-network`** before any repo goes public (`@konstellation` already belongs to a stranger; a squat at the exact install name is the risk). Ties to P6. **Chainlist entry fields decided 2026-09-30 (founder):** `name` "Konstellation" / "Konstellation Testnet" / "Konstellation Devnet"; `shortName` `kons` / `kons-test` / `kons-dev` (all three verified free on chainid.network 2026-09-30, and all three ids still unlisted); `status` `incubating` with empty `rpc`/`faucets`/`explorers` until public endpoints exist; `slip44: 1` on test networks. `chain` `Konstellation` (all three); `nativeCurrency` `{ name: "KASH", symbol: "KASH", decimals: 18 }` (token name = symbol, decided 2026-09-30, now in ENGINEERING §1; chain-config PR #4 aligns `nativeCurrency.name`, docs and faucet already said KASH). **Filed 2026-09-30: [ethereum-lists/chains#8791](https://github.com/ethereum-lists/chains/pull/8791)** from the org fork `Konstellation-Network/chains` (branch `add-konstellation`); `./gradlew run` + prettier pass locally; upstream CI waits for maintainer approval (first-time contributor). IDs and short names still unclaimed upstream at filing. Follow-ups: icon (must be `ipfs get`-retrievable, **not Pinata** per their README), then RPC/explorer/faucet + `status` active at launch. The npm-org half of P25 is still open. `infoURL` `https://github.com/Konstellation-Network`, the org profile README (public `.github` repo, created 2026-09-30) until a website exists. Next: fork `ethereum-lists/chains`, add the three `eip155-*.json` + `_data/icons/konstellation.json` (logo pinned on IPFS), run `./gradlew run`, open the PR. Icon: `L.png` in the org folder (211×211 black on transparent; nearly invisible on dark wallets). Ship it anyway and replace it later with a dark-safe or SVG version: a later PR changes only `_data/icons/konstellation.json` (new IPFS CID), and the chain entries stay as they are. | unregistered / unclaimed | both |
