@@ -299,6 +299,7 @@ konstellation-network/
 │
 ├── chain-config           ← npm package for dapp devs. Public. (pre-mainnet)
 ├── faucet                 ← testnet token faucet. Public. (pre-mainnet)
+├── Scriipture             ← TypeScript DSL → Solidity compiler + CLI (npm `scriipture`). Public.
 └── .github                ← shared workflows, CODEOWNERS template. (pre-mainnet)
                              (CODEOWNERS itself is per-repo — GitHub has no
                              org-wide default for it; see §17.)
@@ -306,6 +307,10 @@ konstellation-network/
 
 **There is exactly one repo that produces an executable: `konstellation`.**
 Everything else produces configuration, documentation, contracts or cloud resources.
+`Scriipture` ships an npm package with a `scriipture` CLI entry point (a Node
+script, like any npm tool). It is a developer tool that never runs on a node, so
+it does not compete with `konstellationd`. Whether this rule should name it as
+an exception is open (STATUS P31).
 
 ### 5.1 Relationships
 
