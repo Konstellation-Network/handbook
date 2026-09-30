@@ -1,5 +1,34 @@
 # Konstellation — Status & Handoff
 
+**2026-09-30 — five founder decisions for devnet-1 (§15 phase 4b):**
+1. **devnet-1's circuit super admin is a single dev key**; testnet-1's is
+   still to be decided. P28 is built on top of this: `networks` #3,
+   `gen-genesis.sh --circuit-admin`, which also requires the admin to have a
+   genesis allocation.
+2. **Build provenance is accepted while `konstellation` is public.** The
+   release workflow's `attest-build-provenance` step stays, and each release
+   writes a permanent public Sigstore record. It covers the build's identity,
+   including, e.g., the repo and its owner, `release.yml`, the commit and tag,
+   the Actions run URL and trigger, and the runner environment (from the
+   signing certificate), plus the attested binary's sha256, which GitHub's
+   attestation API also serves. No source code, binary or secrets are in it.
+   If the repo ever goes private again, remove the step at that time: per
+   GitHub's docs, attestations on private repos need GitHub Enterprise Cloud,
+   so neither the Free nor the Team plan can produce them.
+3. **OpenTofu state for devnet-1 is local, on the founder's PC,** until a
+   bucket exists; a real bucket (P4) is still needed before testnet-1's first
+   apply. The PC need not stay on: state is read only during `tofu
+   plan/apply` and Ansible runs from it, and the network runs on Hetzner.
+   `infra/terraform/envs/devnet-1/backend.tf` must switch from `gcs` to
+   `local` before the first apply (**pending in `infra`**; it still says
+   `gcs` on 2026-09-30). Keep an encrypted copy of the state off
+   the PC.
+4. **P29: the founder holds devnet-1's validator key backup, on the founder's PC.**
+   Recommended: an encrypted copy off the machine as well. Losing both means
+   a new devnet genesis.
+5. **Hostnames are temporarily `sslip.io`** (`<ip>.sslip.io`, wildcard DNS,
+   no domain purchase) for the devnet RPC, faucet and explorer (P8 interim).
+
 **2026-09-30 — `Scriipture` joined the org** (created 00:26, public, MIT). It is
 our TypeScript DSL: contracts written as decorated TypeScript classes compile to
 readable Solidity, to lower the barrier for dapp developers who don't know
@@ -52,15 +81,19 @@ transactions, a verified ERC-20 and ERC-721 exercised every explorer page. A
 stale `ghcr.io` Docker login makes public pulls fail with "denied" — log out
 or re-login with `gh auth token | docker login ghcr.io -u <user>
 --password-stdin` (needs `read:packages`).
-**Next for devnet (§15 phase 4b), in order:** (1) P28 — `gen-genesis.sh` writes
-the circuit super-admin, plus the `verify.sh` assertion; (2) decide whether a
-Sigstore provenance entry is acceptable while `konstellation` is public, then
-the first signed release tag, recorded in `networks/RELEASES.md`; (3) generate
-the devnet faucet key and put its address in the devnet allocations, then cut
-`networks/devnet-1/genesis.json`; (4) name the state bucket (P4), pin OpenTofu
-1.12.x in `versions.tf`, `tofu apply` `envs/devnet-1`; (5) faucet captcha
-provider + payout policy (P7) and hosting/domains for faucet and explorer.
-Decisions open for the founder: P16, P29, P30, plus P25/P6 registrations.
+**Next for devnet (§15 phase 4b), in order** (updated 2026-09-30; the
+decisions this list used to wait on are recorded at the top of this file):
+(1) P28 — built in `networks` #3, awaiting merge; (2) the first signed
+release tag (provenance accepted 2026-09-30), recorded in
+`networks/RELEASES.md`; (3) generate the devnet validator, faucet and
+circuit-admin keys and put the addresses in the devnet allocations, then cut
+`networks/devnet-1/genesis.json`; (4) switch `envs/devnet-1/backend.tf` to
+`local` (decided 2026-09-30; a bucket, P4, is still needed before testnet-1),
+pin OpenTofu 1.12.x in `versions.tf`, `tofu apply` `envs/devnet-1`; (5) faucet
+captcha provider + payout policy (P7); hostnames are `<ip>.sslip.io` for now
+(P8 interim). Decisions open for the founder: P16, P30, P32 (testnet-1's
+circuit admin), the rest of P29 (the one-validator lost-state-file
+procedure), plus P25/P6 registrations.
 
 **2026-09-29 — GitHub Actions is out of minutes.** The org is on the Free plan with
 private repos (2 000 min/month); September's were all used by `konstellation`
@@ -80,9 +113,9 @@ byte-identical tx (`tx already seen`); fixed in `3b09d25`. **All four merged
 #14 `25e7d94` → #15 `06f9ebe`. #15's `README.md` conflict with #14 was
 resolved by keeping both sections; the merged tree is identical to the tested
 combined branch. docs #2 (`0bb6939`) and chain-config #2 (`96915c1`) were merged the same day. **No PR is open in any repo.** Build
-provenance: `actions/attest-build-provenance` on a
-private repo likely needs GitHub Enterprise Cloud, so check that before the
-first tag.
+provenance: resolved 2026-09-30. Private-repo attestations need GitHub
+Enterprise Cloud, and the founder accepted the public record while
+`konstellation` is public (see the entry at the top of this file).
 **Later on 2026-09-29, the founder made eight repos public** so that Actions
 runs free: `konstellation`, `contracts`, `networks`, `explorer`, `docs`,
 `whitepaper`, `chain-config` and `faucet`. The intent is to make them private
@@ -101,9 +134,8 @@ build provenance. Branch protection is available on public repos but has not
 been set.
 **Next, toward testnet-1 (§5 item 8):** (1) P28: `gen-genesis.sh` writes the
 circuit super-admin, plus a `verify.sh` assertion, in `networks`; (2) the first
-signed release tag. #13's `release.yml` is on `main` but has never run, so
-decide first whether a provenance entry in the public Sigstore log is
-acceptable while `konstellation` is public. Then record the tag in
+signed release tag. #13's `release.yml` is on `main` but has never run; the
+public provenance entry was accepted on 2026-09-30. Then record the tag in
 `networks/RELEASES.md` and cut `testnet-1/genesis.json`.
 
 **Updated:** 2026-09-22 — **six of the seven non-chain PRs merged** after three review
@@ -848,15 +880,15 @@ the rest wait. **Network column:** which network the decision actually bites on
 | ~~P1~~ | ~~Foundation's share of the 10~~ **answered 2026-09-20: all 10 are foundation-run, both networks** → `infra` scales from 5 to 10 validators (being applied on `close-known-gaps`) | — | both |
 | P2 | Whitepaper `\todo`s: roadmap stage triggers/targets for opening the set; mainnet 3-of-5 ops multisig and compliance-authority signer sets; bridge design; bundler/paymaster operator; audit SoW dates; bounty platform; publishing entity; whether team beneficiaries are named | placeholders | mainnet (multisigs also have testnet dev-key stand-ins) |
 | P3 | Real team beneficiaries, amounts and TGE for `contracts/script/config/vesting.json` | example addresses | mainnet |
-| P4 | `infra` state bucket (`backend.tf`) | none — must be created and named before any `terraform apply` | testnet-1 first |
+| P4 (devnet-1: local state on the founder's PC, decided 2026-09-30; a bucket is still required before testnet-1) | `infra` state bucket (`backend.tf`) | devnet-1: local state (pending switch in `infra`); testnet-1/mainnet: none — must be created and named before their first `tofu apply` | testnet-1 first |
 | P5 | `infra` topology: per-cloud bastions vs one entry point; monitoring on GCP | per-cloud, GCP | testnet-1 first, mainnet inherits |
 | P6 | npm scope `@konstellation-network` + a LICENSE for the org (no repo has one) | package `"private": true` | both (publishing) |
 | P7 | Faucet amount and cooldown; captcha must be on before public | 10 KASH, 24 h, captcha off | devnet-1, testnet-1 |
-| P8 | `docs` hosting/domain | `docs.konstellation.network` placeholder | both |
+| P8 (interim 2026-09-30: `<ip>.sslip.io` hostnames for devnet RPC/faucet/explorer until a domain is bought) | `docs` hosting/domain | `docs.konstellation.network` placeholder | both |
 | P9 | tenderduty (paging) is archived upstream — pick a maintained fork | tenderduty | mainnet (fine for testnet) |
 | P11 | NFT media storage: an S3-compatible bucket (R2/S3) with TLS + anonymous read per network, keys into `explorer/.env.<net>` `NFT_MEDIA_S3_*`; a pinning/paid IPFS gateway (ipfs.io rate-limits) | local MinIO only | testnet-1 first |
 | ~~P27~~ (done PR #14 `3243793`: cause is cosmos-sdk v0.54.3 `server/util.go bindFlags` flattening TOML arrays into one-element slices — not cosmos/evm `checkOrigin`; repaired in `cmd/konstellationd/cmd/flags.go`, drop when fixed upstream; README tells dapp devs to list hosts) | `konstellation` JSON-RPC WebSocket: with `ws-origins = ["127.0.0.1", "localhost"]` an upgrade carrying `Origin: http://localhost` or `http://127.0.0.1` gets **403** while a request with no `Origin` passes (explorer review, dev node). Either the running node's allowed-origins slice is not what app.toml says (flag/TOML-array parsing) or `checkOrigin` compares differently; browser dapps using `eth_subscribe` over WS would be refused. Reproduce and fix or document. | open | both |
-| **P28** | **`networks/scripts/gen-genesis.sh` must write the circuit super-admin** (`app_state.circuit.account_permissions` = the ops multisig / dev key with `LEVEL_SUPER_ADMIN`) — today a script-cut genesis closes the `MsgCreateValidator` gate with no admin, so every admission or emergency trip would first need a governance proposal (3 d mainnet). Add a `--circuit-admin <bech32>` step required with `--gentxs`, and a `verify.sh` assertion (list == [MsgCreateValidator], ≥ 1 super-admin). Also update `infra/runbooks/validator-admission.md` for the real window shape (reset N → create N+1 → disable; never broadcast the pre-signed file before `query tx <reset>` shows a height; re-sign if refused). | missing | both |
+| **P28** (built 2026-09-30: `networks` #3, **open, not yet merged** — `--circuit-admin`, admin allocation required, `verify.sh` assertion, live-node tested; the `infra` admission-runbook half is still open) | **`networks/scripts/gen-genesis.sh` must write the circuit super-admin** (`app_state.circuit.account_permissions` = the ops multisig / dev key with `LEVEL_SUPER_ADMIN`) — today a script-cut genesis closes the `MsgCreateValidator` gate with no admin, so every admission or emergency trip would first need a governance proposal (3 d mainnet). Add a `--circuit-admin <bech32>` step required with `--gentxs`, and a `verify.sh` assertion (list == [MsgCreateValidator], ≥ 1 super-admin). Also update `infra/runbooks/validator-admission.md` for the real window shape (reset N → create N+1 → disable; never broadcast the pre-signed file before `query tx <reset>` shows a height; re-sign if refused). | `networks` #3 open | both |
 | ~~P26~~ (done `c1f1337` on PR #13) | `konstellation/RELEASING.md` and the release-notes text in `release.yml` verify provenance with `gh attestation verify --owner Konstellation-Network`, which accepts a build attested from **any** org repo. Change to `--repo Konstellation-Network/konstellation --signer-workflow Konstellation-Network/konstellation/.github/workflows/release.yml` (docs already say so). Small; fold into the release-workflow PR. | `--owner` | both |
 | ~~P24~~ (done PR #14 `8605e79`: 0x…0803 dropped from `ActiveStaticPrecompiles`, 10 active; `docs/contracts.md:86` still lists vesting — docs follow-up) | **Genesis marks the `vesting` precompile (`0x…0803`) active but cosmos/evm v0.7.3 ships no implementation** — every call/tx to it fails with `precompiled contract not stored in memory` (adversarial chain-config review 2026-09-21). Drop it from `ActiveStaticPrecompiles` in `konstellation/app/genesis.go` (and from chain-config/docs), or document it as inert. | listed active | both |
 | **P25** | **Register EIP-155 ids 5667 / 56671 / 56672 (devnet, D18) at `ethereum-lists/chains` now** (D1 said "before testnet"; still absent 2026-09-21 — wallets warn, and nobody else must take them) and **claim the npm org `@konstellation-network`** before any repo goes public (`@konstellation` already belongs to a stranger; a squat at the exact install name is the risk). Ties to P6. | unregistered / unclaimed | both |
@@ -864,9 +896,10 @@ the rest wait. **Network column:** which network the decision actually bites on
 | **P22** (interim in infra `3dfae83`) | **Cosigner connectivity in `dedicated` mode**: cosigners reach each other through the bastion WireGuard tunnel, so tunnel down → the far-cloud cosigner is partitioned → 5 of 10 validators stop signing → halt. Cosigners need their own peer-pinned mesh over public IPs (or redundant tunnels). README and `CloudUnreachable` currently claim the opposite. | tunnel | mainnet |
 | **P23** (interim in infra `3dfae83`) | **Sentry topology**: one sentry per validator and `persistent_peers` = own sentry; four DoS'd sentry IPs halt the chain. Each validator should peer with ≥ 2 sentries and sentries cross-peer. Also validators admit p2p from the whole /24 (incl. the internet-facing RPC node) — narrow to own sentries. | 1:1 | both |
 | ~~P20~~ (fixed, PR #15 `402a921`: bank `SendRestriction` + x/vm balance guard + submission-time refusal of `transfer`/`transferFrom` naming a frozen address; exemptions for gov deposit refunds, ICS-20 refunds, unbonding, validator-removal commission — each demonstrated necessary) | Was: **A compliance freeze does not immobilise bank balance (chain bug, adversarial docs review 2026-09-21).** Reproduced on the dev chain: an EOA approves a spender on the werc20 precompile (`0xD4949664…`), is emergency-frozen (`isFrozen` true, its own sends refused), then `transferFrom(frozen, spender)` **succeeds** and `transfer(to = frozen)` succeeds. The ante checks signers and the tx `to` (the precompile); the precompile moves bank balance directly and `x/compliance` installs no bank `SendRestriction`. Any pre-freeze ERC-20/contract allowance drains a frozen account; any contract call funds it. Fix in `konstellation`: a bank send restriction on frozen `from`/`to` (covers werc20, IBC, everything), and/or a compliance wrapper on the werc20/bank precompiles like `app/circuit_precompiles.go`; then re-state the semantics in docs/whitepaper honestly ("a freeze stops signing and being the direct recipient"). Audit scope. | open | both |
-| **P29** | **devnet-1 validator key custody (D18).** One validator, no Horcrux: losing `priv_validator_key.json` means a new genesis. It needs an offline, encrypted backup; who holds it is undecided. And `infra/runbooks/validator-key-rotation.md` §B's lost-state-file procedure ("chain height + margin") deadlocks a one-validator chain — no devnet procedure yet. | unassigned | devnet-1 only |
+| **P29** (custody answered 2026-09-30: the founder holds the backup on their PC; keep an encrypted off-machine copy too. **Still open:** the one-validator lost-state-file procedure) | **devnet-1 validator key custody (D18).** One validator, no Horcrux: losing `priv_validator_key.json` means a new genesis. It needs an offline, encrypted backup; who holds it is undecided. And `infra/runbooks/validator-key-rotation.md` §B's lost-state-file procedure ("chain height + margin") deadlocks a one-validator chain — no devnet procedure yet. | unassigned | devnet-1 only |
 | **P30** | **devnet-1 resets (D18).** Resetting under the same chain-id keeps 56672, so old devnet txs could replay on the new chain (no value at stake). Moving to `devnet-2` needs a binary change, or it falls back to the local id 56670. Pick one before the first reset. | undecided | devnet-1 only |
 | **P31** | **`Scriipture` integration (added 2026-09-30).** (a) The npm name `scriipture` is owned by the account `tsionark` (last publish 2026-08-16). Confirm that account is ours before publishing, or move it into the org; this ties to P25's npm-org claim. (b) Fix the `package.json` URLs, which still point to `Worldstreet-Web-Services/scripture`. (c) Add devnet-1/testnet-1/konstellation-1 as built-in networks, ideally from `@konstellation-network/chain-config` so the chain ids have one source (§5.2). (d) Decide the target: solc 0.8.37 / `evmVersion` Prague (D17) and OZ 5.7.0, as `contracts` uses, versus today's `^0.8.20` / unset / `^5.1.0`. (e) Make the CI security job green: fix the bridge example or record why the finding is accepted. (f) Should ENGINEERING §5's "exactly one repo produces an executable" name the `scriipture` npm CLI as an exception? That is a policy call. | as imported | devnet-1 first (dapp developers) |
+| **P32** | **testnet-1's x/circuit super admin (added 2026-09-30).** devnet-1's is a single dev key; mainnet's is the 3-of-5 operations multisig (§13.1). testnet-1 was left undecided on 2026-09-30: a dev key, or a dev multisig to rehearse mainnet's signing. Whichever it is must hold a genesis allocation (`networks` #3). | undecided | testnet-1 |
 | **P16** | **Validator placement: four failure domains (re-scoped 2026-09-29 for D7's 4 validators).** Four equal validators tolerate one failure; 2 down = halt. So no provider, region or account may hold 2 of the 4, or one outage halts the chain. The founder is weighing Contabo, multi-cloud, or multiple availability regions of one provider; the last survives a zone or region outage but not a provider-wide one (account suspension, billing, control-plane incident). Decide before testnet-1's `terraform apply`; testnet-1 inherits mainnet's answer so it rehearses it. `infra` branch `devnet-network` defaults testnet-1 to 2 Hetzner (fsn1, hel1) + 2 GCP (two zones of `us-central1`), with a `validator_placement_warning` output until this is decided. *(Was: 5 Hetzner + 5 GCP, GCP five all in `us-central1`; §15's "kill 40 %" chaos test was past the halt threshold — now "kill 1 of 4".)* | 2 + 2, warned | both |
 | **P17** | **`x/compliance` can freeze governance out (chain bug class).** *Design note in PR #15: option A (exempt gov messages from the ante check) is now weaker — a frozen signer cannot pay fees after PR #15, so A also needs a fee carve-out and lets a frozen large staker keep voting; **option B recommended: widen the protected set so bonded validator operators and x/circuit super-admins can be frozen only by governance, never by the list authority** (same pattern as the existing authority protection).* Protected-from-freeze = module accounts, gov, the authority (`app.go:1132-1144`); validator operator accounts, the ops 3-of-5 and the treasury multisig are freezable, and the ante refuses any tx from a frozen signer incl. `MsgVote`/`MsgDeposit`. A compromised authority freezes the ten operators + ops multisig, schedules the permanent adds → 100 % of bonded stake cannot vote, quorum unreachable forever, breaker untrippable. Fix in `konstellation`: exempt `x/gov` messages from the freeze check and/or add bonded operators + circuit super-admins to the protected set; add to the audit scope. | open | both |
 | **P18** | **Unquoted IBC paths pass `x/ratelimit` untouched** (`keeper/flow.go:164-176`) and channel handshakes are permissionless — "no channel carries value until governance sets a quota" (§15 phase 9) is procedure, not a property; an exploit's exit through a fresh channel is unlimited. Decide: ship `/ibc.applications.transfer.v1.MsgTransfer` in circuit `disabled_type_urls` at genesis (D16 pattern; both networks) or make `x/ratelimit` default-deny for unquoted paths. | open | mainnet (testnet has no channels) |
