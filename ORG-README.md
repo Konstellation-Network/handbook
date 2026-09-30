@@ -13,7 +13,9 @@ Konstellation-Network/        the org (NOT a git repo itself)
 ├── networks/                 repo — genesis, peers, upgrades
 ├── contracts/                repo — preinstall Solidity
 ├── infra/                    repo — terraform, ansible, runbooks (private)
-├── explorer/ docs/ whitepaper/ chain-config/ faucet/ .github/
+├── explorer/ docs/ whitepaper/ chain-config/ faucet/
+├── handbook/                 repo — these org docs + wt (private; was .github)
+├── .github/                  repo — public org profile README + SECURITY.md
 └── .worktrees/               extra checkouts, one per <repo>/<branch>
     └── konstellation/hotfix/ worktree of konstellation on branch hotfix
 ```

@@ -300,9 +300,13 @@ konstellation-network/
 ├── chain-config           ← npm package for dapp devs. Public. (pre-mainnet)
 ├── faucet                 ← testnet token faucet. Public. (pre-mainnet)
 ├── Scriipture             ← TypeScript DSL → Solidity compiler + CLI (npm `scriipture`). Public.
-└── .github                ← shared workflows, CODEOWNERS template. (pre-mainnet)
-                             (CODEOWNERS itself is per-repo — GitHub has no
-                             org-wide default for it; see §17.)
+├── handbook               ← ENGINEERING/STATUS/TOKENOMICS, wt, CODEOWNERS
+│                            template, shared workflows. PRIVATE. (was `.github`
+│                            until 2026-09-30; CODEOWNERS itself is per-repo —
+│                            GitHub has no org-wide default for it; see §17.)
+└── .github                ← org profile README + org-default SECURITY.md.
+                             PUBLIC: GitHub shows `profile/README.md` only from a
+                             public `.github`, so nothing internal lives here.
 ```
 
 **There is exactly one repo that produces an executable: `konstellation`.**
@@ -1078,7 +1082,7 @@ noticing gap; these rules close the responding gap.
 
 **`CODEOWNERS` and this model:** GitHub has no org-wide default `CODEOWNERS` — it
 only reads a file committed to *that* repo (root, `.github/`, or `docs/`), so each
-repo needs its own copy; `.github`'s copy is a template to copy from, not something
+repo needs its own copy; `handbook`'s copy is a template to copy from, not something
 GitHub applies for other repos automatically. To match "shared, not assigned to
 individuals" above, a repo's `CODEOWNERS` should list all engineers (or an org team,
 once one exists — none does yet, see `gh api orgs/Konstellation-Network/teams`) as

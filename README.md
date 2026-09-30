@@ -1,4 +1,11 @@
-# .github — org-wide files for Konstellation-Network
+# handbook — internal org-wide files for Konstellation-Network
+
+Private. This repo was called `.github` until 2026-09-30; it was renamed so a
+**public** `.github` repo could carry the org profile README
+(`github.com/Konstellation-Network`) without exposing anything here. If your
+clone still points at `.github.git`, run
+`git remote set-url origin https://github.com/Konstellation-Network/handbook.git`
+and rename the folder to `handbook` (then re-run `bootstrap.sh` for the symlinks).
 
 Canonical home of the documents every repo (and every coding agent) depends on:
 
@@ -16,7 +23,7 @@ On a developer machine these are symlinked into the org root so that
 `Konstellation-Network/ENGINEERING.md` etc. resolve here. Edit them **here**, commit,
 push. `bootstrap.sh` sets the symlinks up.
 
-Shared reusable workflows will also live here (ENGINEERING.md §5). `CODEOWNERS` is
+Shared reusable workflows will also live here (reusable workflows need not be in `.github`) (ENGINEERING.md §5). `CODEOWNERS` is
 **not** on that list: GitHub does not support an org-wide default `CODEOWNERS` (unlike
 `CONTRIBUTING`/`SECURITY`/`SUPPORT`/issue templates, it must live in each individual
 repo to take effect there). A template `CODEOWNERS` can still live here for repos to
