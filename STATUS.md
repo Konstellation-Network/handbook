@@ -1,18 +1,45 @@
 # Konstellation — Status & Handoff
 
-**2026-09-29 — D7 re-decided and D18 added (founder): three networks,
-Solana-style.** `devnet-1` (EIP-155 **56672**, 1 foundation-run validator, dapp
-developers, runs mainnet's binary version); `testnet-1` (**4** validators, was 10;
-ops and upgrade rehearsal, new releases land first); `konstellation-1` (**4**
-validators, was 10). Upgrade order testnet-1 → devnet-1 → mainnet. The 4 must sit
-in four separate failure domains; which ones is open (P16). **PRs open
-2026-09-30, branch `devnet-network` everywhere, not yet reviewed:**
-konstellation #17 (devnet-1 ↔ 56672 known and replay-protected in
-`app/config/chain.go`) **merged 2026-09-30 (`058942e`)**, networks #2, infra #2, chain-config #3, explorer #2,
-faucet #2, docs #3, whitepaper #2, and `.github` (these docs). Next for devnet
-(§15 phase 4b): review and merge those PRs → the first signed release tag
-(already next on the testnet path) → cut `networks/devnet-1/genesis.json` →
-`terraform apply` the devnet-1 env (still needs the P4 state bucket). **Merge order:** `konstellation` first (done) — `chain-config` #3 CI re-run green after it; whitepaper #2 CI blocked by private-repo billing until the 2026-10-01 quota reset.
+**2026-09-30 — D7/D18 landed everywhere; no PR is open in any repo.** Founder
+decision of 2026-09-29, three networks Solana-style: `devnet-1` (EIP-155
+**56672**, 1 foundation-run validator, dapp developers, runs mainnet's binary
+version), `testnet-1` (**4** validators, ops and upgrade rehearsal, new releases
+land first), `konstellation-1` (**4**). Upgrade order testnet-1 → devnet-1 →
+mainnet; the 4 sit in four separate failure domains, which ones is open (P16).
+Merged 2026-09-29/30: konstellation #17 (`058942e`, devnet-1 ↔ 56672 known and
+replay-protected, plus a goconst lint fix), networks #2 (`9f39fbb`, devnet-1
+folder, 1/4/4 gentx checks, P13 fixed), infra #2 (`d62bf57`, devnet-1 env,
+testnet-1 at 4 validators with `validator_placement_warning`), chain-config #3
+(`9361514`), explorer #2 (`205880e`), faucet #2 (`d043e99`, default
+`CHAIN_ID` 56672), docs #3 (`24fa6a8`), whitepaper #2 (`76beacc`, **merged
+without CI** — its jobs were refused for billing; re-run after the 2026-10-01
+reset), `.github` #1 (`bc2e337`) and #2 (`bdf8819`, **OpenTofu is the IaC tool**,
+ENGINEERING §3/§9.1).
+**explorer #3 (`3ba5344`) fixed a startup race** found testing the explorer
+locally: `stats`, `user-ops-indexer` and `nft-media-handler` started with the
+backend (`service_started`), stats queried the empty database (`relation
+"blocks" does not exist`) and rescheduled its daily groups ~23 h out, so the
+home page read NaN for a day after every fresh start. The backend now has a
+healthcheck on `/api/health/liveness` (answers only after migrations) and the
+three wait on `service_healthy`. Verified from a clean database: 0 stats DB
+errors, 0 restarts, daily stats populated on the first run. The gas tracker's
+"N/A" on an idle chain is separate and by design (explorer README "Gas tracker
+and units"). Local verification of the same day: frontend `validate_envs.sh`
+passes for all four env files (incl. `.env.devnet-1`); faucet image builds and
+refuses to start without `FAUCET_PRIVATE_KEY`; a local dev chain with 42
+transactions, a verified ERC-20 and ERC-721 exercised every explorer page. A
+stale `ghcr.io` Docker login makes public pulls fail with "denied" — log out
+or re-login with `gh auth token | docker login ghcr.io -u <user>
+--password-stdin` (needs `read:packages`).
+**Next for devnet (§15 phase 4b), in order:** (1) P28 — `gen-genesis.sh` writes
+the circuit super-admin, plus the `verify.sh` assertion; (2) decide whether a
+Sigstore provenance entry is acceptable while `konstellation` is public, then
+the first signed release tag, recorded in `networks/RELEASES.md`; (3) generate
+the devnet faucet key and put its address in the devnet allocations, then cut
+`networks/devnet-1/genesis.json`; (4) name the state bucket (P4), pin OpenTofu
+1.12.x in `versions.tf`, `tofu apply` `envs/devnet-1`; (5) faucet captcha
+provider + payout policy (P7) and hosting/domains for faucet and explorer.
+Decisions open for the founder: P16, P29, P30, plus P25/P6 registrations.
 
 **2026-09-29 — GitHub Actions is out of minutes.** The org is on the Free plan with
 private repos (2 000 min/month); September's were all used by `konstellation`
