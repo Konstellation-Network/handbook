@@ -1,5 +1,24 @@
 # Konstellation — Status & Handoff
 
+**2026-09-30 — devnet-1 moves to Contabo (founder decision).** It applies to
+devnet-1 only: testnet-1 and mainnet placement stays open under P16, where
+Contabo can be one of the four failure domains. The servers are **ordered by
+hand in Contabo's panel**, and Ansible does everything from the OS up. There
+is no OpenTofu for devnet-1: Contabo VPSes are monthly contracts, and the
+panel is simpler than the provider. That supersedes the morning's "local
+OpenTofu state" decision for devnet-1; P4 still gates testnet-1. **Three
+servers:**
+1. validator: plain key, no Horcrux; SSH and p2p only from server 2.
+2. sentry + public RPC + SSH entry point.
+3. archive + explorer + faucet + monitoring.
+
+Each VPS has a public IP and one disk, so host firewalls are the only
+network control. In progress on 2026-09-30:
+- `infra`: a devnet-1 Contabo inventory; role changes for shared hosts, a
+  single disk and no NAT; retire `terraform/envs/devnet-1` (Hetzner); the
+  admission-runbook half of P28.
+- `networks`: a devnet key and genesis script run on the founder's PC.
+
 **2026-09-30 — new repo `website`: the marketing site (Astro 7, static).** Public at
 https://github.com/Konstellation-Network/website (private vulnerability reporting
 on); no hosting yet. Built from the Claude Design canvas "Konstellation website"
@@ -915,7 +934,7 @@ the rest wait. **Network column:** which network the decision actually bites on
 | ~~P1~~ | ~~Foundation's share of the 10~~ **answered 2026-09-20: all 10 are foundation-run, both networks** → `infra` scales from 5 to 10 validators (being applied on `close-known-gaps`) | — | both |
 | P2 | Whitepaper `\todo`s: roadmap stage triggers/targets for opening the set; mainnet 3-of-5 ops multisig and compliance-authority signer sets; bridge design; bundler/paymaster operator; audit SoW dates; bounty platform; publishing entity; whether team beneficiaries are named | placeholders | mainnet (multisigs also have testnet dev-key stand-ins) |
 | P3 | Real team beneficiaries, amounts and TGE for `contracts/script/config/vesting.json` | example addresses | mainnet |
-| P4 (devnet-1: local state on the founder's PC, decided 2026-09-30; a bucket is still required before testnet-1) | `infra` state bucket (`backend.tf`) | devnet-1: local state (pending switch in `infra`); testnet-1/mainnet: none — must be created and named before their first `tofu apply` | testnet-1 first |
+| P4 (devnet-1 needs none: hand-ordered Contabo servers, no OpenTofu, decided 2026-09-30; a bucket is still required before testnet-1) | `infra` state bucket (`backend.tf`) | devnet-1: n/a (no OpenTofu); testnet-1/mainnet: none — must be created and named before their first `tofu apply` | testnet-1 first |
 | P5 | `infra` topology: per-cloud bastions vs one entry point; monitoring on GCP | per-cloud, GCP | testnet-1 first, mainnet inherits |
 | P6 | npm scope `@konstellation-network` + a LICENSE for the org. **Licenses done 2026-09-30 (D19):** LICENSE PRs konstellation #18, networks #4, contracts #3, chain-config #5, docs #5, whitepaper #4, explorer #4, faucet #3; trademark policy `.github` #2. **Still open:** form the legal entity; counsel reviews `legal/CLA-draft.md` + trademark filings for "Konstellation"/"KASH"; then fill the entity into LICENSE holders/TRADEMARKS.md and enable the CLA workflow. npm scope unclaimed. | package `"private": true`; CLA not in force | both (publishing) |
 | P7 | Faucet amount and cooldown; captcha must be on before public | 10 KASH, 24 h, captcha off | devnet-1, testnet-1 |
