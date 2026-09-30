@@ -23,7 +23,7 @@ On a developer machine these are symlinked into the org root so that
 `Konstellation-Network/ENGINEERING.md` etc. resolve here. Edit them **here**, commit,
 push. `bootstrap.sh` sets the symlinks up.
 
-Shared reusable workflows will also live here (reusable workflows need not be in `.github`) (ENGINEERING.md §5). `CODEOWNERS` is
+Shared reusable workflows do **not** live here: per GitHub's docs, a workflow in a public repo cannot call a reusable workflow stored in a private repo, and most org repos are public. Put them in the public `.github` repo (ENGINEERING.md §5). `CODEOWNERS` is
 **not** on that list: GitHub does not support an org-wide default `CODEOWNERS` (unlike
 `CONTRIBUTING`/`SECURITY`/`SUPPORT`/issue templates, it must live in each individual
 repo to take effect there). A template `CODEOWNERS` can still live here for repos to
