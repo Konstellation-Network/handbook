@@ -12,7 +12,7 @@
 #   ./wt each  <git args...>          run a git command in every repo (e.g. ./wt each pull)
 set -euo pipefail
 
-# canonical file lives in <org>/.github/wt and is symlinked to <org>/wt
+# canonical file lives in <org>/handbook/wt and is symlinked to <org>/wt
 ORG="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 WT_DIR="$ORG/.worktrees"
 

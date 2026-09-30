@@ -52,4 +52,5 @@ find something the next agent must know. Convert relative dates to absolute.
 | `chain-config` | npm package for dapp developers |
 | `faucet` | testnet token faucet |
 | `Scriipture` | TypeScript DSL that compiles to Solidity (npm `scriipture`, CLI + 9-gate verify pipeline) |
-| `.github` | org-wide CODEOWNERS and shared workflows |
+| `handbook` | private: ENGINEERING/STATUS/TOKENOMICS, this file, `wt`, `bootstrap.sh`, CODEOWNERS template (was `.github` until 2026-09-30) |
+| `.github` | **public**: org profile README (`profile/`), org-default `SECURITY.md`. Nothing internal goes here |
