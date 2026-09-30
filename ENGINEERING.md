@@ -296,6 +296,7 @@ konstellation-network/
 ├── infra                  ← terraform, ansible, runbooks. PRIVATE.
 ├── explorer               ← Blockscout deployment config. Public.
 ├── docs                   ← developer documentation site. Public.
+├── website                ← marketing site (Astro, static). Public.
 ├── whitepaper             ← versioned PDF releases. Public.
 │
 ├── chain-config           ← npm package for dapp devs. Public. (pre-mainnet)
