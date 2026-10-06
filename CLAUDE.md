@@ -53,5 +53,6 @@ find something the next agent must know. Convert relative dates to absolute.
 | `faucet` | testnet token faucet |
 | `website` | marketing site (Astro, static HTML); light theme is the default for everyone |
 | `Scriipture` | TypeScript DSL that compiles to Solidity (npm `scriipture`, CLI + 9-gate verify pipeline) |
+| `portal` | private: the user app "Portal" — Google sign-in (Decane Kit), hourly XP taps, leaderboard, paid auto-streak (Pouch) |
 | `handbook` | private: ENGINEERING/STATUS/TOKENOMICS, this file, `wt`, `bootstrap.sh`, CODEOWNERS template (was `.github` until 2026-09-30) |
 | `.github` | **public**: org profile README (`profile/`), org-default `SECURITY.md`. Nothing internal goes here |

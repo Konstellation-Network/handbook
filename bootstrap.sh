@@ -14,7 +14,7 @@ GH_ORG=Konstellation-Network
 for f in ENGINEERING.md STATUS.md CLAUDE.md TOKENOMICS.md wt; do ln -sfn "handbook/$f" "$ORG/$f"; done
 ln -sfn handbook/ORG-README.md "$ORG/README.md"
 
-for r in konstellation networks contracts infra explorer docs whitepaper chain-config faucet Scriipture .github; do
+for r in konstellation networks contracts infra explorer docs whitepaper chain-config faucet Scriipture portal .github; do
   [ -d "$ORG/$r/.git" ] || git -C "$ORG" clone "git@github.com:$GH_ORG/$r.git"
 done
 echo "org ready at $ORG"; "$ORG/wt" status

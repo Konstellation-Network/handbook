@@ -15,6 +15,7 @@ Konstellation-Network/        the org (NOT a git repo itself)
 ├── infra/                    repo — terraform, ansible, runbooks (private)
 ├── explorer/ docs/ whitepaper/ chain-config/ faucet/
 ├── Scriipture/               repo — TypeScript → Solidity (npm `scriipture`)
+├── portal/                   repo — the user app "Portal" (private)
 ├── handbook/                 repo — these org docs + wt (private; was .github)
 ├── .github/                  repo — public org profile README + SECURITY.md
 └── .worktrees/               extra checkouts, one per <repo>/<branch>
