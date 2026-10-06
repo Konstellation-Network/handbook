@@ -317,3 +317,4 @@ but numbers that are either assumed, defaulted, or need re-checking:
 | Whitepaper | **v1.0 drafted 2026-09-20** (`whitepaper` branch `whitepaper-v1-draft`, 27 pp) | economics section written from §2–§7; 18 `\todo{}` items and legal review outstanding | `whitepaper` |
 | Team vesting shape | **decided 2026-09-20**: 10 % liquid at genesis; 90 % 0-at-cliff (12 mo) then linear 36 mo, 365-day years | — | `VestingSchedules.sol` + genesis allocations |
 | Community 30 M liquid vs 50 M pool seed | **resolved 2026-09-20: 50 M**, seeded in genesis `distribution` state; 280 M vests | — | §7 |
+| Portal XP to airdrop | **undecided** (STATUS P36). Portal pays 1/24 XP per hourly tap; a $1 one-day auto-streak pays 1 XP, recorded as `auto_streak` | the obvious source, "User & developer incentives" (§7), vests linearly within year 1, so little is unlocked at TGE | a founder decision, then a claim contract on konstellation-1 |

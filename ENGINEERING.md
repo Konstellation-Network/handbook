@@ -2,7 +2,7 @@
 
 **Audience:** coding agents and engineers working on any Konstellation repo.
 **Status:** pre-testnet. Nothing here is deployed yet.
-**Last updated:** 2026-09-29 (D7 re-decided: **three networks, Solana-style** — `devnet-1` (1 validator, EIP-155 56672, dapp developers), `testnet-1` (4 validators, ops rehearsal), `konstellation-1` (4 validators); new D18; §1, §9.4, §11, §15, §18 updated. 2026-09-21: D17: EVM fork = Prague, Osaka not enabled; contracts move to solc 0.8.37/prague. 2026-09-20: D7 re-decided: 10 foundation-run validators, admission permissioned, both networks; D16 admission via x/circuit; D12 team 10 % liquid at TGE; §9.4/§15/§18 reconciled; D12 vesting built + WKASH address pinned in `contracts`; §5.2, §6.3–6.7, §12, §17, §18 updated for the seven non-chain repo branches — see `STATUS.md` §1/§5a; earlier: D6 x/compliance built, PR #10; D6 list semantics + authority decided; team vesting revocable; testnet gov profile built (PR #7); D6 re-decided to a chain-wide `x/compliance`; §18 testnet-vs-mainnet matrix added; D4 F = 1265 on a 1 B KASH supply; D4–D9, D12 decided — all numbered open decisions in §11 are now
+**Last updated:** 2026-10-06 (new private repo `portal`, the user app "Portal": §5, §6.8, §18. 2026-09-29: D7 re-decided: **three networks, Solana-style** — `devnet-1` (1 validator, EIP-155 56672, dapp developers), `testnet-1` (4 validators, ops rehearsal), `konstellation-1` (4 validators); new D18; §1, §9.4, §11, §15, §18 updated. 2026-09-21: D17: EVM fork = Prague, Osaka not enabled; contracts move to solc 0.8.37/prague. 2026-09-20: D7 re-decided: 10 foundation-run validators, admission permissioned, both networks; D16 admission via x/circuit; D12 team 10 % liquid at TGE; §9.4/§15/§18 reconciled; D12 vesting built + WKASH address pinned in `contracts`; §5.2, §6.3–6.7, §12, §17, §18 updated for the seven non-chain repo branches — see `STATUS.md` §1/§5a; earlier: D6 x/compliance built, PR #10; D6 list semantics + authority decided; team vesting revocable; testnet gov profile built (PR #7); D6 re-decided to a chain-wide `x/compliance`; §18 testnet-vs-mainnet matrix added; D4 F = 1265 on a 1 B KASH supply; D4–D9, D12 decided — all numbered open decisions in §11 are now
 resolved; WKASH renamed from WKONS)
 
 Load this document as context before working in any `konstellation-network/*` repo.
@@ -302,6 +302,7 @@ konstellation-network/
 ├── chain-config           ← npm package for dapp devs. Public. (pre-mainnet)
 ├── faucet                 ← testnet token faucet. Public. (pre-mainnet)
 ├── Scriipture             ← TypeScript DSL → Solidity compiler + CLI (npm `scriipture`). Public.
+├── portal                 ← "Portal", the user app: XP, hourly streaks, leaderboard. PRIVATE.
 ├── handbook               ← ENGINEERING/STATUS/TOKENOMICS, wt, CODEOWNERS
 │                            template. PRIVATE. (was `.github`
 │                            until 2026-09-30; CODEOWNERS itself is per-repo —
@@ -319,6 +320,10 @@ Everything else produces configuration, documentation, contracts or cloud resour
 script, like any npm tool). It is a developer tool that never runs on a node, so
 it does not compete with `konstellationd`. Whether this rule should name it as
 an exception is open (STATUS P31).
+
+`portal` builds a container image of a Node web service plus two static sites,
+as `faucet` builds a service image. Neither runs on a node, so neither competes
+with `konstellationd`.
 
 ### 5.1 Relationships
 
@@ -622,6 +627,31 @@ whitepaper/
 
 Kept separate from `docs` because exchanges and investors cite specific versions,
 and tokenomics changes need an auditable history.
+
+### 6.8 `portal` — private
+
+The user app, **Portal** (added 2026-10-06). Users sign in with Google through
+Decane Kit and get an embedded wallet, tap once an hour for XP and a streak,
+climb a public leaderboard, and can buy a one-day auto-streak paid through
+Pouch. XP is meant to count toward a future airdrop; how is open (STATUS P36).
+Design: the "Portal — MVP Architecture" doc in Claude Docs (shared by the
+founder).
+
+```
+portal/
+├── apps/api/          Fastify v1 API, webhooks, scheduled-job routes, migrate command
+├── apps/web/          the user app, static, served by Cloudflare Pages
+├── packages/core/     every business rule: hour windows, streaks, XP, ranks, orders
+├── packages/db/       Drizzle schema + SQL migrations
+├── packages/adapters/ Decane, Pouch, Turnstile behind interfaces
+├── packages/config/   environment parsing
+└── packages/sdk/      generated API client (web now, mobile later)
+```
+
+A modular monolith: one service, one Postgres. The same image runs on GCP
+(Cloud Run + Cloud SQL) or on a Contabo server; which one is open (STATUS P33).
+Private because its anti-abuse heuristics only work while unpublished. Portal is
+off-chain today; on-chain tasks will read devnet-1 once it is live (§18).
 
 ---
 
@@ -1133,6 +1163,7 @@ in the same change.
 | BlockSTM | follows mainnet | off | off at launch; enabled by governance after a clean shadow-node month (phase 10) | §2.5 |
 | State-breaking upgrade drill, chaos test, halt/restart | never — devnet stays up; it takes each upgrade after testnet-1 has proven it | **must all happen here** (phase 5) | never rehearsed for the first time on mainnet | — |
 | Explorer, docs, chain-config | primary dapp target; the default network in `chain-config` and the docs; same explorer images as testnet-1 | all three networks; explorer ships the pinned public Blockscout images (backend 9.0.2 / frontend v2.3.5 — decided 2026-09-20) | both networks; **re-evaluate the Blockscout version before the mainnet explorer goes live** (public images lag source by two majors; build-from-tag is the alternative) | the testnet explorer is proven working today; mainnet's has time to be newer |
+| Portal (`portal`) | on-chain tasks will read devnet-1 once it is live and stable (not built yet) | none | an airdrop claim for Portal XP, undecided (STATUS P36) | Portal is off-chain today; one deployment serves every network |
 
 How to read this against `STATUS.md`: STATUS says what is *built*; this table says
 which network each thing is *for*. If a STATUS entry is testnet-only it should say
